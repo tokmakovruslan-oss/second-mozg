@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Второй мозг родителя — подключить партнёра</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f7f7f9; --card:#fff; --text:#1a1a1a; --muted:#6b6b6b;
+    --accent:#4f46e5; --accent-hover:#4338ca; --danger:#dc2626; --border:#e5e5e8;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg); color:var(--text); margin:0; padding:1.5rem;
+  }
+  .wrap{max-width:480px; margin:0 auto}
+  h1{font-size:1.3rem; margin:0 0 .3rem}
+  .sub{color:var(--muted); font-size:.9rem; margin:0 0 1.5rem}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:1.1rem 1.2rem; margin-bottom:1rem;
+  }
+  .card h2{font-size:1rem; margin:0 0 .8rem}
+  label{display:block; font-size:.85rem; color:var(--muted); margin:.6rem 0 .25rem}
+  input[type=email], input[type=password], input[type=text]{
+    width:100%; padding:.6rem .7rem; border:1px solid var(--border); border-radius:9px;
+    font-size:.95rem;
+  }
+  .row{display:flex; gap:.5rem}
+  .row > *{flex:1}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:.65rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; margin-top:.8rem;
+  }
+  button:hover{background:var(--accent-hover)}
+  button.secondary{background:transparent; color:var(--accent); border:1px solid var(--accent)}
+  button.danger{background:transparent; color:var(--danger); border:1px solid var(--danger); padding:.35rem .7rem; font-size:.8rem; margin-top:0}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  .scope{display:flex; align-items:center; gap:.4rem; font-size:.88rem; margin:.4rem 0}
+  .scope input{width:auto}
+  .msg{font-size:.85rem; padding:.5rem .7rem; border-radius:8px; margin-top:.6rem}
+  .msg.error{background:#fef2f2; color:var(--danger)}
+  .msg.ok{background:#f0fdf4; color:#15803d}
+  .org-card{
+    border:1px solid var(--accent); background:#eef2ff; border-radius:10px;
+    padding:.8rem; margin-top:.8rem; font-size:.9rem;
+  }
+  .partner-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:.6rem 0; border-bottom:1px solid var(--border); font-size:.88rem;
+  }
+  .partner-row:last-child{border-bottom:none}
+  .partner-row .meta{color:var(--muted); font-size:.78rem}
+  .badge{font-size:.72rem; padding:.15rem .5rem; border-radius:99px; background:#f1f5f9; color:var(--muted)}
+  .badge.active{background:#f0fdf4; color:#15803d}
+  .badge.revoked{background:#f1f5f9; color:#9ca3af}
+  select{width:100%; padding:.55rem; border-radius:9px; border:1px solid var(--border); font-size:.9rem}
+  .hidden{display:none}
+  a.link{color:var(--accent); font-size:.85rem; cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="link" href="https://secondmozg.netlify.app" style="display:inline-block;margin-bottom:.8rem">← Второй мозг</a>
+  <h1>👨‍👩‍👧 Второй мозг родителя</h1>
+  <p class="sub">Подключение школ и кружков к расписанию ребёнка</p>
+
+  <!-- AUTH CARD -->
+  <div class="card" id="authCard">
+    <h2>Вход в аккаунт</h2>
+    <label>Email</label>
+    <input type="email" id="email" placeholder="you@example.com">
+    <label>Пароль</label>
+    <input type="password" id="password" placeholder="••••••••">
+    <div class="row">
+      <button onclick="signIn()">Войти</button>
+      <button class="secondary" onclick="signUp()">Создать аккаунт</button>
+    </div>
+    <div id="authMsg"></div>
+  </div>
+
+  <!-- MAIN APP (hidden until logged in) -->
+  <div id="app" class="hidden">
+    <div class="card">
+      <h2>Подключить организацию</h2>
+      <label>Код от школы/кружка</label>
+      <input type="text" id="code" placeholder="Например, VOCAL-TEST-2026">
+      <button onclick="checkCode()">Проверить код</button>
+      <div id="orgResult"></div>
+
+      <div id="grantForm" class="hidden">
+        <label>Какому ребёнку</label>
+        <select id="childSelect"></select>
+        <label>Что разрешить</label>
+        <div class="scope"><input type="checkbox" id="scopeRead" checked> Видеть свободные окна в расписании</div>
+        <div class="scope"><input type="checkbox" id="scopeWrite"> Записывать/переносить занятия</div>
+        <div class="scope"><input type="checkbox" id="scopeNotify"> Присылать вам уведомления</div>
+        <button onclick="grantAccess()">Подтвердить и выдать доступ</button>
+        <div id="grantMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Подключённые партнёры</h2>
+      <div id="partnersList" class="muted">Загрузка…</div>
+    </div>
+
+    <a class="link" onclick="signOut()">Выйти из аккаунта</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://rmjwdzoffrnuqokkzgdn.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtandkem9mZnJudXFva2t6Z2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMjA4ODAsImV4cCI6MjA5NzY5Njg4MH0.cI-Vs-n8uRyBmJNF4RAL3c4sxC98KHIJt769NUD4jEM';
+const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+let resolvedOrg = null;
+
+function showMsg(elId, text, ok){
+  const el = document.getElementById(elId);
+  el.innerHTML = `<div class="msg ${ok ? 'ok' : 'error'}">${text}</div>`;
+}
+
+async function signUp(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) return showMsg('authMsg', error.message, false);
+  showMsg('authMsg', 'Готово! Если включено подтверждение email — проверьте почту, иначе просто нажмите «Войти».', true);
+}
+
+async function signIn(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return showMsg('authMsg', error.message, false);
+  enterApp();
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('authCard').classList.remove('hidden');
+}
+
+async function enterApp(){
+  document.getElementById('authCard').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await loadChildren();
+  await loadPartners();
+}
+
+async function loadChildren(){
+  const { data, error } = await sb.from('children').select('id, name').order('name');
+  const sel = document.getElementById('childSelect');
+  sel.innerHTML = '';
+  if (error || !data || data.length === 0) {
+    sel.innerHTML = '<option value="">— детей пока нет —</option>';
+    return;
+  }
+  for (const c of data) {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    sel.appendChild(opt);
+  }
+}
+
+async function checkCode(){
+  const code = document.getElementById('code').value.trim();
+  document.getElementById('orgResult').innerHTML = '';
+  document.getElementById('grantForm').classList.add('hidden');
+  if (!code) return;
+
+  const res = await fetch(SUPABASE_URL + '/functions/v1/redeem-invite-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    showMsg('orgResult', data.error || 'Код не найден', false);
+    return;
+  }
+
+  resolvedOrg = data;
+  document.getElementById('orgResult').innerHTML =
+    `<div class="org-card">🏫 <b>${data.organization_name}</b> запрашивает доступ к расписанию ребёнка</div>`;
+  document.getElementById('grantForm').classList.remove('hidden');
+}
+
+async function grantAccess(){
+  if (!resolvedOrg) return;
+  const code = document.getElementById('code').value.trim();
+  const child_id = document.getElementById('childSelect').value;
+  if (!child_id) return showMsg('grantMsg', 'Сначала добавьте ребёнка в систему', false);
+
+  const scopes = [];
+  if (document.getElementById('scopeRead').checked) scopes.push('schedule:read');
+  if (document.getElementById('scopeWrite').checked) scopes.push('schedule:write');
+  if (document.getElementById('scopeNotify').checked) scopes.push('notify:send');
+  if (scopes.length === 0) return showMsg('grantMsg', 'Выберите хотя бы одно право', false);
+
+  const { data: sess } = await sb.auth.getSession();
+  const jwt = sess.session?.access_token;
+
+  const res = await fetch(SUPABASE_URL + '/functions/v1/grant-partner-access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+    body: JSON.stringify({ code, child_id, scopes })
+  });
+  const data = await res.json();
+
+  if (!res.ok) return showMsg('grantMsg', data.error || 'Не получилось выдать доступ', false);
+
+  showMsg('grantMsg', `Доступ выдан: ${resolvedOrg.organization_name}`, true);
+  document.getElementById('code').value = '';
+  document.getElementById('orgResult').innerHTML = '';
+  document.getElementById('grantForm').classList.add('hidden');
+  resolvedOrg = null;
+  await loadPartners();
+}
+
+async function loadPartners(){
+  const { data, error } = await sb
+    .from('partner_access')
+    .select('id, scopes, status, organizations(name, type), children(name)')
+    .order('created_at', { ascending: false });
+
+  const el = document.getElementById('partnersList');
+  if (error) { el.innerHTML = `<div class="msg error">${error.message}</div>`; return; }
+  if (!data || data.length === 0) { el.innerHTML = '<p class="sub">Пока никого не подключили.</p>'; return; }
+
+  el.innerHTML = data.map(p => `
+    <div class="partner-row">
+      <div>
+        <div>${p.organizations?.name ?? '—'} — ${p.children?.name ?? '—'}</div>
+        <div class="meta">${p.scopes.join(', ')}</div>
+      </div>
+      <div style="text-align:right">
+        <span class="badge ${p.status}">${p.status === 'active' ? 'активен' : 'отозван'}</span><br>
+        ${p.status === 'active' ? `<button class="danger" onclick="revoke('${p.id}')">Отозвать</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function revoke(partner_access_id){
+  const { data: sess } = await sb.auth.getSession();
+  const jwt = sess.session?.access_token;
+  const res = await fetch(SUPABASE_URL + '/functions/v1/revoke-partner-access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+    body: JSON.stringify({ partner_access_id })
+  });
+  if (res.ok) await loadPartners();
+}
+
+// авто-вход, если сессия уже есть в браузере
+sb.auth.getSession().then(({ data }) => {
+  if (data.session) enterApp();
+});
+</script>
+</body>
+</html>
