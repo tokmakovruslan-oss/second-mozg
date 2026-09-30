@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Второй мозг родителя</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+  html, body { margin:0; padding:0; background:#EDEAE0; }
+  * { box-sizing: border-box; }
+</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState } = React;
+
+// ---------------------------------------------------------------------------
+// Tiny inline icon set (no external icon package — keeps this file self-contained)
+// ---------------------------------------------------------------------------
+function Icon({ name, size = 16, className = "", spin = false }) {
+  const s = { width: size, height: size };
+  const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  const paths = {
+    home: <><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></>,
+    inbox: <><path d="M4 5h16v11l-2 3H6l-2-3z"/><path d="M4 12h4l2 3h4l2-3h4"/></>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></>,
+    users: <><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6"/><path d="M16 8.5a3 3 0 100-5"/><path d="M22 20c0-2.7-2-5-5-5.7"/></>,
+    sparkles: <><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></>,
+    check: <path d="M20 6L9 17l-5-5"/>,
+    x: <><path d="M18 6L6 18"/><path d="M6 6l12 12"/></>,
+    chevronDown: <path d="M6 9l6 6 6-6"/>,
+    chevronRight: <path d="M9 6l6 6-6 6"/>,
+    alertTriangle: <><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><path d="M12 17h.01"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></>,
+    bag: <><path d="M6 8h12l1 12H5z"/><path d="M9 8V6a3 3 0 016 0v2"/></>,
+    mapPin: <><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></>,
+    phone: <path d="M6 3h3l1.5 5L8 9.5a12 12 0 006.5 6.5L16 14l5 1.5V19a2 2 0 01-2.2 2A17 17 0 013 5.2 2 2 0 015 3z"/>,
+    ruler: <><path d="M3 16l5-5 11 11-5 5z"/><path d="M8 11l2 2"/><path d="M11 8l2 2"/><path d="M14 5l2 2"/></>,
+    heart: <path d="M12 20s-7-4.5-9.5-9A5.5 5.5 0 0112 5a5.5 5.5 0 019.5 6c-2.5 4.5-9.5 9-9.5 9z"/>,
+    cap: <><path d="M2 9l10-4 10 4-10 4z"/><path d="M6 11v4c0 1.5 2.7 3 6 3s6-1.5 6-3v-4"/></>,
+    folder: <path d="M3 6h6l2 2h10v11H3z"/>,
+    star: <path d="M12 3l2.9 6 6.6.6-5 4.4 1.5 6.5L12 17l-6 3.5L7.5 14l-5-4.4 6.6-.6z"/>,
+    bell: <><path d="M6 9a6 6 0 0112 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9z"/><path d="M10 18a2 2 0 004 0"/></>,
+    loader: <><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.2 4.2l2.1 2.1"/><path d="M17.7 17.7l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M4.2 19.8l2.1-2.1"/><path d="M17.7 6.3l2.1-2.1"/></>,
+    mic: <><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></>,
+    image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5.5-5.5L4 21"/></>,
+    file: <><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></>,
+    message: <path d="M4 4h16v12H9l-5 4z"/>,
+    send: <path d="M4 12l16-8-6 16-3-6-7-2z"/>,
+  };
+  return (
+    <svg {...s} {...common} className={`${className} ${spin ? "animate-spin" : ""}`}>
+      {paths[name] || null}
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+const COLORS = {
+  bg: "#FBFAF6", ink: "#22261E", inkSoft: "#5B6156",
+  sage: "#3F6657", sageLight: "#E4ECE6",
+  urgent: "#B5651D", urgentLight: "#F5E6D3",
+  line: "#E4DFD1", card: "#FFFFFF",
+};
+
+const KIDS = {
+  arseniy: { id: "arseniy", name: "Арсений", age: 8, color: "#3E5C8A", tint: "#E7ECF4" },
+  ameliya: { id: "ameliya", name: "Амелия", age: 6, color: "#A9506B", tint: "#F5E9ED" },
+};
+
+const TODAY_SECTIONS = [
+  { key: "urgent", title: "Требует решения", items: [
+    { kid: "arseniy", icon: "alertTriangle", text: "Уточнить: скриншот из чата — это про соревнования Арсения?", sub: "Из Inbox · не хватает данных", tone: "urgent" },
+  ]},
+  { key: "soon", title: "Через 3 дня", items: [
+    { kid: "arseniy", icon: "bag", text: "Соревнования у Арсения в субботу, 11:00", sub: "Нужно: белая футболка (не куплена), справка (просрочена)", tone: "urgent" },
+  ]},
+  { key: "week", title: "Ближайшие дни", items: [
+    { kid: "arseniy", icon: "clock", text: "Тренировка — завтра, 18:00", sub: "СК «Локомотив» · тренер Иван Петров", tone: "default" },
+    { kid: "ameliya", icon: "clock", text: "Утренник в саду — 20 сентября, 10:00", sub: "Нужен костюм — уточнить какой", tone: "default" },
+  ]},
+  { key: "overdue", title: "Просрочено", items: [
+    { kid: "arseniy", icon: "alertTriangle", text: "Медсправка для секции истекла 10 сентября", sub: "Нужна новая — иначе не допустят к тренировкам", tone: "urgent" },
+  ]},
+  { key: "later", title: "Скоро понадобится", items: [
+    { kid: "ameliya", icon: "star", text: "День рождения Амелии — 28 сентября", sub: "Через 12 дней · стоит начать думать про подарок", tone: "default" },
+    { kid: "ameliya", icon: "bell", text: "Стоматолог — 15 октября, 16:30", sub: "Напомнить за неделю? Ещё не подтверждено", tone: "default" },
+  ]},
+];
+
+const INITIAL_INBOX = [
+  { id: "i1", kind: "message", from: "Вы", preview: "У Арсения в четверг тренировка в 18:00", status: "draft",
+    draft: { kid: "arseniy", title: "Тренировка", when: "чт, 17 сентября · 18:00", where: "СК «Локомотив»", note: "Совпадает с обычным расписанием секции (вт/чт)" } },
+  { id: "i2", kind: "image", from: "Фото объявления", preview: "Объявление на входе в сад Амелии", status: "draft",
+    draft: { kid: "ameliya", title: "Утренник в саду", when: "вс, 20 сентября · 10:00", where: "Группа «Ромашка»", note: "Распознано с фото: «Приглашаем на праздник Осени»" } },
+  { id: "i3", kind: "mic", from: "Голосовое, 0:08", preview: "«Запиши Арсения на тренировку в субботу»", status: "draft",
+    draft: { kid: "arseniy", title: "Доп. тренировка (футбол)", when: "сб, 19 сентября · время уточняется", where: "СК «Локомотив» (обычное место секции)", note: "Определил по истории: секция — футбол, тренер Иван Петров. Уточнять не стал — данных достаточно." } },
+  { id: "i4", kind: "message", from: "Вы", preview: "Дантист Амелии 15 октября в 16:30", status: "draft",
+    draft: { kid: "ameliya", title: "Стоматолог", when: "чт, 15 октября · 16:30", where: "уточнить клинику", note: null, followups: ["Напомнить за неделю", "Спросить дату следующего визита при подтверждении"] } },
+  { id: "i5", kind: "image", from: "Переслано из чата класса", preview: "«Соревнования в субботу, начало в 11, приехать за полчаса»", status: "clarify",
+    question: "Это про Арсения — школьные соревнования по футболу?" },
+  { id: "i6", kind: "file", from: "raspisanie_4chetvert.pdf", preview: "Расписание секций на четверть", status: "processing" },
+];
+
+const KID_KB = {
+  arseniy: [
+    { icon: "cap", title: "Школа", rows: ["Школа №7, 2 «Б» класс", "Классный руководитель: Ольга Сергеевна"] },
+    { icon: "star", title: "Секции", rows: ["Футбол — вт/чт 18:00, СК «Локомотив»", "Тренер: Иван Петров, +7 902 xxx-xx-01"] },
+    { icon: "heart", title: "Здоровье", rows: ["Педиатр: Смирнова А.В., детская поликлиника №3", "Медсправка для секции: истекла 10.09"] },
+    { icon: "folder", title: "Документы", rows: ["Свидетельство о рождении — скан сохранён", "Справка в секцию — нужно обновить"] },
+    { icon: "ruler", title: "Размеры", rows: ["Рост 132 см", "Одежда 128 см, обувь 33"] },
+    { icon: "phone", title: "Контакты", rows: ["Тренер Иван Петров", "Классный руководитель Ольга Сергеевна"] },
+  ],
+  ameliya: [
+    { icon: "cap", title: "Сад", rows: ["Детский сад №14, группа «Ромашка»", "Воспитатель: Наталья Ивановна"] },
+    { icon: "star", title: "Секции", rows: ["Рисование — сб 11:00", "Плавание — начали обсуждать, не записаны"] },
+    { icon: "heart", title: "Здоровье", rows: ["Стоматолог: приём 15.10 в 16:30", "Аллергия: не указано"] },
+    { icon: "folder", title: "Документы", rows: ["Медкарта в саду — актуальна"] },
+    { icon: "ruler", title: "Размеры", rows: ["Рост 118 см", "Одежда 116 см, обувь 28"] },
+    { icon: "phone", title: "Контакты", rows: ["Воспитатель Наталья Ивановна"] },
+  ],
+};
+
+const WEEK = [
+  { day: "Пн 14", items: [] },
+  { day: "Вт 15", items: [{ kid: "arseniy", time: "18:00", title: "Тренировка", place: "СК «Локомотив»" }] },
+  { day: "Ср 16 · сегодня", items: [], today: true },
+  { day: "Чт 17", items: [{ kid: "arseniy", time: "18:00", title: "Тренировка", place: "СК «Локомотив»" }] },
+  { day: "Пт 18", items: [] },
+  { day: "Сб 19", items: [
+      { kid: "arseniy", time: "10:30", title: "Приезд к старту", place: "Стадион «Юность»" },
+      { kid: "arseniy", time: "11:00", title: "Соревнования", place: "Стадион «Юность»" },
+      { kid: "ameliya", time: "11:00", title: "Рисование", place: "Студия «Радуга»" },
+    ], conflict: true },
+  { day: "Вс 20", items: [{ kid: "ameliya", time: "10:00", title: "Утренник в саду", place: "Группа «Ромашка»" }] },
+];
+
+const ASK_SUGGESTIONS = [
+  "Что у детей на этой неделе?",
+  "Что нужно сделать по Арсению до пятницы?",
+  "Когда у Амелии следующий визит к врачу?",
+];
+
+const ASK_ANSWERS = {
+  "Что у детей на этой неделе?": "На этой неделе: у Арсения тренировка завтра в 18:00 и соревнования в субботу в 11:00 (нужна белая футболка и справка). У Амелии — утренник в саду в воскресенье в 10:00. В субботу в 11:00 тренировка Амелии совпадает по времени с соревнованиями Арсения — возможно, понадобится помощь, чтобы успеть в оба места.",
+  "Что нужно сделать по Арсению до пятницы?": "До пятницы: купить белую футболку для соревнований и оформить медсправку — она просрочена с 10 сентября. Тренировка в четверг в 18:00 — как обычно, действий не требует.",
+  "Когда у Амелии следующий визит к врачу?": "15 октября в 16:30 — приём у стоматолога. Клиника пока не уточнена. Могу напомнить за неделю, если подтвердишь это событие в Inbox.",
+};
+
+function KidTag({ kidId, size = "sm" }) {
+  const kid = KIDS[kidId];
+  if (!kid) return null;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1"}`}
+      style={{ background: kid.tint, color: kid.color }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: kid.color }} />
+      {kid.name}
+    </span>
+  );
+}
+
+function TopBar({ title, subtitle }) {
+  return (
+    <div className="px-5 pt-6 pb-4">
+      <h1 className="text-[26px] leading-tight" style={{ fontFamily: "'Fraunces', serif", color: COLORS.ink, fontWeight: 600 }}>{title}</h1>
+      {subtitle && <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>{subtitle}</p>}
+    </div>
+  );
+}
+
+function TodayScreen() {
+  return (
+    <div className="pb-6">
+      <TopBar title="Сегодня" subtitle="Среда, 16 сентября" />
+      <div className="px-5 space-y-6">
+        {TODAY_SECTIONS.map((section) => (
+          <div key={section.key}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-[13px] font-semibold tracking-tight" style={{ color: COLORS.inkSoft }}>{section.title}</h2>
+              <span className="text-[12px]" style={{ color: COLORS.inkSoft }}>{section.items.length}</span>
+            </div>
+            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              {section.items.map((item, idx) => {
+                const kid = KIDS[item.kid];
+                return (
+                  <div key={idx} className="flex gap-3 px-4 py-3.5"
+                    style={{ borderLeft: `3px solid ${kid.color}`, borderBottom: idx < section.items.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: item.tone === "urgent" ? COLORS.urgentLight : COLORS.sageLight, color: item.tone === "urgent" ? COLORS.urgent : COLORS.sage }}>
+                      <Icon name={item.icon} size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap"><KidTag kidId={item.kid} /></div>
+                      <p className="text-[14.5px] mt-1 leading-snug" style={{ color: COLORS.ink }}>{item.text}</p>
+                      <p className="text-[12.5px] mt-0.5" style={{ color: COLORS.inkSoft }}>{item.sub}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InboxScreen() {
+  const [items, setItems] = useState(INITIAL_INBOX);
+  const [openId, setOpenId] = useState(null);
+
+  const confirm = (id) => { setItems((p) => p.map((it) => it.id === id ? { ...it, status: "confirmed" } : it)); setOpenId(null); };
+  const clarify = (id, ok) => {
+    setItems((p) => p.map((it) => it.id === id ? (ok ? {
+      ...it, status: "draft",
+      draft: { kid: "arseniy", title: "Соревнования по футболу", when: "сб, 19 сентября · 11:00", where: "Стадион «Юность»", note: "Приехать за 30 минут — к 10:30" },
+    } : { ...it, status: "confirmed" }) : it));
+  };
+
+  return (
+    <div className="pb-6">
+      <TopBar title="AI Inbox" subtitle="Скидывай сюда всё — я разберу" />
+      <div className="px-5 space-y-3">
+        {items.map((item) => {
+          const isOpen = openId === item.id;
+          return (
+            <div key={item.id} className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              <button onClick={() => setOpenId(isOpen ? null : item.id)} className="w-full flex items-start gap-3 px-4 py-3.5 text-left">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: COLORS.sageLight, color: COLORS.sage }}>
+                  <Icon name={item.kind} size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{item.from}</p>
+                  <p className="text-[14.5px] mt-0.5 leading-snug" style={{ color: COLORS.ink }}>{item.preview}</p>
+                  <div className="mt-1.5">
+                    {item.status === "confirmed" && <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: COLORS.sage }}><Icon name="check" size={13} /> Добавлено</span>}
+                    {item.status === "processing" && <span className="inline-flex items-center gap-1 text-[12px]" style={{ color: COLORS.inkSoft }}><Icon name="loader" size={13} spin /> Анализирую…</span>}
+                    {item.status === "clarify" && <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: COLORS.urgent }}><Icon name="alertTriangle" size={13} /> Нужно уточнение</span>}
+                    {item.status === "draft" && <span className="text-[12px] font-medium" style={{ color: COLORS.urgent }}>Проверь и подтверди</span>}
+                  </div>
+                </div>
+                <Icon name="chevronDown" size={16} className="mt-1 shrink-0" style={{ color: COLORS.inkSoft, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+              </button>
+
+              {isOpen && item.status === "draft" && (
+                <div className="px-4 pb-4 pt-1" style={{ borderTop: `1px solid ${COLORS.line}` }}>
+                  <div className="rounded-xl p-3 mt-3" style={{ background: COLORS.bg }}>
+                    <div className="flex items-center gap-2 mb-2"><KidTag kidId={item.draft.kid} size="md" /></div>
+                    <p className="text-[15px] font-medium" style={{ color: COLORS.ink, fontFamily: "'Fraunces', serif" }}>{item.draft.title}</p>
+                    <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>{item.draft.when}</p>
+                    {item.draft.where && <p className="text-[13px] flex items-center gap-1 mt-0.5" style={{ color: COLORS.inkSoft }}><Icon name="mapPin" size={12} /> {item.draft.where}</p>}
+                    {item.draft.note && <p className="text-[12.5px] mt-2 italic" style={{ color: COLORS.sage }}>{item.draft.note}</p>}
+                    {item.draft.followups && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {item.draft.followups.map((f, i) => (
+                          <span key={i} className="text-[11.5px] px-2 py-1 rounded-full" style={{ background: COLORS.sageLight, color: COLORS.sage }}>+ {f}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => confirm(item.id)} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white flex items-center justify-center gap-1.5" style={{ background: COLORS.sage }}>
+                      <Icon name="check" size={15} /> Подтвердить
+                    </button>
+                    <button className="rounded-xl py-2.5 px-4 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.inkSoft, border: `1px solid ${COLORS.line}` }}>Исправить</button>
+                  </div>
+                </div>
+              )}
+
+              {isOpen && item.status === "clarify" && (
+                <div className="px-4 pb-4 pt-1" style={{ borderTop: `1px solid ${COLORS.line}` }}>
+                  <p className="text-[13.5px] mt-3" style={{ color: COLORS.ink }}>{item.question}</p>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => clarify(item.id, true)} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white" style={{ background: COLORS.sage }}>Да, это Арсений</button>
+                    <button onClick={() => clarify(item.id, false)} className="rounded-xl py-2.5 px-4 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.inkSoft, border: `1px solid ${COLORS.line}` }}>Нет, это не про детей</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarScreen() {
+  return (
+    <div className="pb-6">
+      <TopBar title="Календарь семьи" subtitle="14–20 сентября" />
+      <div className="px-5 space-y-3">
+        {WEEK.map((d) => (
+          <div key={d.day}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[12.5px] font-semibold" style={{ color: d.today ? COLORS.sage : COLORS.inkSoft }}>{d.day}</span>
+              {d.conflict && <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: COLORS.urgentLight, color: COLORS.urgent }}><Icon name="alertTriangle" size={11} /> совпадение по времени</span>}
+            </div>
+            {d.items.length === 0 ? (
+              <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: COLORS.card, border: `1px dashed ${COLORS.line}`, color: COLORS.inkSoft }}>Ничего не запланировано</div>
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+                {d.items.map((it, idx) => {
+                  const kid = KIDS[it.kid];
+                  return (
+                    <div key={idx} className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderLeft: `3px solid ${kid.color}`, borderBottom: idx < d.items.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
+                      <span className="text-[13px] font-medium w-11 shrink-0" style={{ color: COLORS.ink }}>{it.time}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2"><KidTag kidId={it.kid} /><span className="text-[14px]" style={{ color: COLORS.ink }}>{it.title}</span></div>
+                        <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: COLORS.inkSoft }}><Icon name="mapPin" size={11} /> {it.place}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChildrenScreen() {
+  const [activeKid, setActiveKid] = useState("arseniy");
+  const [openSection, setOpenSection] = useState(0);
+  const kid = KIDS[activeKid];
+  const sections = KID_KB[activeKid];
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Дети" />
+      <div className="px-5 flex gap-2 mb-5">
+        {Object.values(KIDS).map((k) => (
+          <button key={k.id} onClick={() => { setActiveKid(k.id); setOpenSection(0); }} className="flex-1 rounded-2xl px-4 py-3 text-left"
+            style={{ background: activeKid === k.id ? k.tint : COLORS.card, border: `1px solid ${activeKid === k.id ? k.color : COLORS.line}` }}>
+            <p className="text-[15px] font-medium" style={{ color: activeKid === k.id ? k.color : COLORS.ink, fontFamily: "'Fraunces', serif" }}>{k.name}</p>
+            <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{k.age} лет</p>
+          </button>
+        ))}
+      </div>
+      <div className="px-5 space-y-2.5">
+        {sections.map((sec, idx) => {
+          const isOpen = openSection === idx;
+          return (
+            <div key={sec.title} className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              <button onClick={() => setOpenSection(isOpen ? -1 : idx)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: kid.tint, color: kid.color }}><Icon name={sec.icon} size={15} /></div>
+                <span className="flex-1 text-[14.5px] font-medium" style={{ color: COLORS.ink }}>{sec.title}</span>
+                <Icon name="chevronRight" size={16} style={{ color: COLORS.inkSoft, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4 pt-0.5" style={{ borderTop: `1px solid ${COLORS.line}` }}>
+                  <ul className="mt-2.5 space-y-1.5">
+                    {sec.rows.map((row, i) => (
+                      <li key={i} className="text-[13.5px] leading-snug flex gap-2" style={{ color: COLORS.inkSoft }}>
+                        <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: kid.color }} />
+                        <span style={{ color: COLORS.ink }}>{row}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AskScreen() {
+  const [messages, setMessages] = useState([]);
+  const [value, setValue] = useState("");
+  const [thinking, setThinking] = useState(false);
+
+  const send = (text) => {
+    if (!text.trim()) return;
+    setMessages((p) => [...p, { role: "user", text }]);
+    setValue("");
+    setThinking(true);
+    setTimeout(() => {
+      const answer = ASK_ANSWERS[text] || "В прототипе отвечаю только на пару примеров вопросов — но в реальном приложении здесь будет ответ, собранный из всех данных по детям.";
+      setMessages((p) => [...p, { role: "ai", text: answer }]);
+      setThinking(false);
+    }, 700);
+  };
+
+  return (
+    <div className="pb-6 flex flex-col" style={{ minHeight: "70vh" }}>
+      <TopBar title="Спросить" subtitle="Всё, что знает система — в одном ответе" />
+      <div className="px-5 flex-1 space-y-3">
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {ASK_SUGGESTIONS.map((s) => (
+              <button key={s} onClick={() => send(s)} className="text-[13px] px-3 py-2 rounded-xl text-left" style={{ background: COLORS.sageLight, color: COLORS.sage }}>{s}</button>
+            ))}
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
+              style={m.role === "user" ? { background: COLORS.sage, color: "#fff", borderBottomRightRadius: 4 } : { background: COLORS.card, color: COLORS.ink, border: `1px solid ${COLORS.line}`, borderBottomLeftRadius: 4 }}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {thinking && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl px-4 py-2.5 flex items-center gap-1.5" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              <Icon name="loader" size={14} spin style={{ color: COLORS.sage }} />
+              <span className="text-[13px]" style={{ color: COLORS.inkSoft }}>Собираю ответ…</span>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="px-5 mt-4">
+        <div className="flex items-center gap-2 rounded-2xl px-3 py-2" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+          <input value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(value)}
+            placeholder="Спроси о детях…" className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: COLORS.ink }} />
+          <button onClick={() => send(value)} className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: COLORS.sage, color: "#fff" }}>
+            <Icon name="send" size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const TABS = [
+  { key: "today", label: "Сегодня", icon: "home", screen: TodayScreen },
+  { key: "inbox", label: "Inbox", icon: "inbox", screen: InboxScreen },
+  { key: "calendar", label: "Календарь", icon: "calendar", screen: CalendarScreen },
+  { key: "kids", label: "Дети", icon: "users", screen: ChildrenScreen },
+  { key: "ask", label: "Спросить", icon: "sparkles", screen: AskScreen },
+];
+
+function App() {
+  const [tab, setTab] = useState("today");
+  const ActiveScreen = TABS.find((t) => t.key === tab).screen;
+
+  return (
+    <div className="w-full min-h-screen flex justify-center" style={{ background: "#EDEAE0" }}>
+      <div className="w-full flex flex-col relative" style={{ maxWidth: 430, background: COLORS.bg, fontFamily: "'Inter', sans-serif", minHeight: "100vh" }}>
+        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 84 }}>
+          <ActiveScreen />
+        </div>
+        <div className="fixed bottom-0 flex items-stretch" style={{ width: "100%", maxWidth: 430, background: COLORS.card, borderTop: `1px solid ${COLORS.line}`, paddingBottom: 8 }}>
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)} className="flex-1 flex flex-col items-center gap-1 pt-2.5 pb-1">
+                <Icon name={t.icon} size={19} style={{ color: active ? COLORS.sage : COLORS.inkSoft }} />
+                <span className="text-[10.5px]" style={{ color: active ? COLORS.sage : COLORS.inkSoft, fontWeight: active ? 600 : 400 }}>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
