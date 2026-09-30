@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Админка организации — Второй мозг родителя</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--bg:#f7f7f9;--card:#fff;--text:#1a1a1a;--muted:#6b6b6b;--accent:#7c3aed;--accent-hover:#6d28d9;--border:#e5e5e8}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:1.5rem}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:1.3rem;margin:0 0 .3rem}
+  .sub{color:var(--muted);font-size:.9rem;margin:0 0 1.5rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;margin-bottom:1rem}
+  .card h2{font-size:1rem;margin:0 0 .8rem}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:.6rem 0 .25rem}
+  input[type=email],input[type=password],input[type=text],input[type=number],input[type=datetime-local]{
+    width:100%;padding:.6rem .7rem;border:1px solid var(--border);border-radius:9px;font-size:.95rem;
+  }
+  .row{display:flex;gap:.5rem}
+  .row > *{flex:1}
+  button{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:.6rem 1rem;font-size:.88rem;font-weight:600;cursor:pointer;margin-top:.7rem}
+  button:hover{background:var(--accent-hover)}
+  button.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .msg{font-size:.85rem;padding:.5rem .7rem;border-radius:8px;margin-top:.6rem}
+  .msg.error{background:#fef2f2;color:#dc2626}
+  .msg.ok{background:#f0fdf4;color:#15803d}
+  .code-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.85rem}
+  .code-row:last-child{border-bottom:none}
+  .code-row .meta{color:var(--muted);font-size:.75rem}
+  code{background:#f1f5f9;padding:.15rem .4rem;border-radius:5px;font-weight:600}
+  .badge{font-size:.7rem;padding:.1rem .5rem;border-radius:99px;background:#f1f5f9;color:var(--muted)}
+  .badge.ok{background:#f0fdf4;color:#15803d}
+  .hidden{display:none}
+  a.link{color:var(--accent);font-size:.85rem;cursor:pointer}
+  .empty{color:var(--muted);font-size:.88rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="link" href="index.html" style="display:inline-block;margin-bottom:.8rem">← Партнёрам «Второго мозга»</a>
+  <h1>🏫 Админка организации</h1>
+  <p class="sub">Коды для родителей и приглашения сотрудников</p>
+
+  <div class="card" id="authCard">
+    <h2>Вход</h2>
+    <label>Email</label>
+    <input type="email" id="email">
+    <label>Пароль</label>
+    <input type="password" id="password">
+    <div class="row">
+      <button onclick="signIn()">Войти</button>
+      <button class="secondary" onclick="signUp()">Создать аккаунт</button>
+    </div>
+    <div id="authMsg"></div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="card" id="orgCard"></div>
+
+    <div class="card" id="joinCard">
+      <h2>Присоединиться к организации по коду</h2>
+      <p class="empty">Если вам ещё не выдали доступ — вставьте код, который прислал владелец организации.</p>
+      <input type="text" id="joinCode" placeholder="Код от владельца">
+      <button onclick="joinOrg()">Присоединиться</button>
+      <div id="joinMsg"></div>
+    </div>
+
+    <div class="card hidden" id="parentCodesCard">
+      <h2>Коды для родителей</h2>
+      <div class="row">
+        <input type="number" id="maxUses" placeholder="Лимит использований (пусто = без лимита)">
+        <input type="number" id="daysValid" placeholder="Дней действия" value="30">
+      </div>
+      <button onclick="createParentCode()">Создать код</button>
+      <div id="parentCodeMsg"></div>
+      <div id="parentCodesList" style="margin-top:.8rem"></div>
+    </div>
+
+    <div class="card hidden" id="staffCodesCard">
+      <h2>Пригласить сотрудника</h2>
+      <button onclick="createStaffCode()">Сгенерировать код приглашения</button>
+      <div id="staffCodeMsg"></div>
+      <div id="staffCodesList" style="margin-top:.8rem"></div>
+    </div>
+
+    <a class="link" onclick="signOut()">Выйти</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://rmjwdzoffrnuqokkzgdn.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtandkem9mZnJudXFva2t6Z2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMjA4ODAsImV4cCI6MjA5NzY5Njg4MH0.cI-Vs-n8uRyBmJNF4RAL3c4sxC98KHIJt769NUD4jEM';
+const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+let myOrg = null; // {organization_id, role, name}
+
+function showMsg(id, text, ok){ document.getElementById(id).innerHTML = `<div class="msg ${ok?'ok':'error'}">${text}</div>`; }
+function randomCode(prefix){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i=0;i<8;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return `${prefix}-${s}`;
+}
+
+async function signUp(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) return showMsg('authMsg', error.message, false);
+  showMsg('authMsg', 'Аккаунт создан. Если подтверждение email отключено — сразу жмите «Войти».', true);
+}
+
+async function signIn(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return showMsg('authMsg', error.message, false);
+  enterApp();
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('authCard').classList.remove('hidden');
+}
+
+async function enterApp(){
+  document.getElementById('authCard').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await loadOrg();
+}
+
+async function loadOrg(){
+  const { data, error } = await sb
+    .from('organization_members')
+    .select('organization_id, role, organizations(name, type)');
+
+  const orgCard = document.getElementById('orgCard');
+
+  if (error || !data || data.length === 0) {
+    myOrg = null;
+    orgCard.innerHTML = '<h2>Вы пока никуда не привязаны</h2><p class="empty">Введите код приглашения ниже, чтобы присоединиться к организации.</p>';
+    document.getElementById('parentCodesCard').classList.add('hidden');
+    document.getElementById('staffCodesCard').classList.add('hidden');
+    return;
+  }
+
+  const m = data[0];
+  myOrg = { organization_id: m.organization_id, role: m.role, name: m.organizations.name };
+  orgCard.innerHTML = `<h2>${myOrg.name}</h2><p class="empty">Ваша роль: <b>${myOrg.role === 'owner' ? 'владелец' : 'сотрудник'}</b></p>`;
+
+  document.getElementById('joinCard').classList.add('hidden');
+  document.getElementById('parentCodesCard').classList.remove('hidden');
+  await loadParentCodes();
+
+  if (myOrg.role === 'owner') {
+    document.getElementById('staffCodesCard').classList.remove('hidden');
+    await loadStaffCodes();
+  }
+}
+
+async function joinOrg(){
+  const code = document.getElementById('joinCode').value.trim();
+  if (!code) return;
+  const { data: sess } = await sb.auth.getSession();
+  const jwt = sess.session?.access_token;
+  const res = await fetch(SUPABASE_URL + '/functions/v1/join-organization', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+    body: JSON.stringify({ code })
+  });
+  const data = await res.json();
+  if (!res.ok) return showMsg('joinMsg', data.error || 'Не удалось присоединиться', false);
+  showMsg('joinMsg', `Вы в организации «${data.organization_name}»`, true);
+  await loadOrg();
+}
+
+async function createParentCode(){
+  if (!myOrg) return;
+  const maxUsesRaw = document.getElementById('maxUses').value;
+  const days = parseInt(document.getElementById('daysValid').value || '30', 10);
+  const code = randomCode('CODE');
+
+  const { error } = await sb.from('invite_codes').insert({
+    organization_id: myOrg.organization_id,
+    code,
+    max_uses: maxUsesRaw ? parseInt(maxUsesRaw, 10) : null,
+    expires_at: new Date(Date.now() + days * 86400000).toISOString(),
+  });
+
+  if (error) return showMsg('parentCodeMsg', error.message, false);
+  showMsg('parentCodeMsg', `Код создан: ${code}`, true);
+  await loadParentCodes();
+}
+
+async function loadParentCodes(){
+  const { data, error } = await sb
+    .from('invite_codes')
+    .select('code, max_uses, uses_count, expires_at')
+    .eq('organization_id', myOrg.organization_id)
+    .order('created_at', { ascending: false });
+
+  const el = document.getElementById('parentCodesList');
+  if (error) { el.innerHTML = `<div class="msg error">${error.message}</div>`; return; }
+  if (!data || data.length === 0) { el.innerHTML = '<p class="empty">Кодов пока нет.</p>'; return; }
+
+  el.innerHTML = data.map(c => {
+    const expired = c.expires_at && new Date(c.expires_at) < new Date();
+    return `<div class="code-row">
+      <div><code>${c.code}</code><div class="meta">использован ${c.uses_count}${c.max_uses ? ' из ' + c.max_uses : ''} раз</div></div>
+      <span class="badge ${expired ? '' : 'ok'}">${expired ? 'истёк' : 'активен'}</span>
+    </div>`;
+  }).join('');
+}
+
+async function createStaffCode(){
+  if (!myOrg) return;
+  const code = randomCode('STAFF');
+  const { error } = await sb.from('staff_invite_codes').insert({
+    organization_id: myOrg.organization_id,
+    code,
+    role: 'staff',
+    expires_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+  });
+  if (error) return showMsg('staffCodeMsg', error.message, false);
+  showMsg('staffCodeMsg', `Код для сотрудника: ${code} — отправьте ему, пусть войдёт сюда же и вставит в поле «Присоединиться»`, true);
+  await loadStaffCodes();
+}
+
+async function loadStaffCodes(){
+  const { data, error } = await sb
+    .from('staff_invite_codes')
+    .select('code, used_by, expires_at')
+    .eq('organization_id', myOrg.organization_id)
+    .order('created_at', { ascending: false });
+
+  const el = document.getElementById('staffCodesList');
+  if (error) { el.innerHTML = `<div class="msg error">${error.message}</div>`; return; }
+  if (!data || data.length === 0) { el.innerHTML = '<p class="empty">Приглашений пока нет.</p>'; return; }
+
+  el.innerHTML = data.map(c => `
+    <div class="code-row">
+      <code>${c.code}</code>
+      <span class="badge ${c.used_by ? '' : 'ok'}">${c.used_by ? 'использован' : 'ждёт'}</span>
+    </div>
+  `).join('');
+}
+
+sb.auth.getSession().then(({ data }) => { if (data.session) enterApp(); });
+</script>
+</body>
+</html>
