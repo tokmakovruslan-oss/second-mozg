@@ -6,8 +6,8 @@
 <title>Второй мозг родителя</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap');
-  html, body { margin:0; padding:0; background:#EDEAE0; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+  html, body { margin:0; padding:0; background:#f5f5f7; }
   * { box-sizing: border-box; }
 </style>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -71,11 +71,15 @@ function Icon({ name, size = 16, className = "", spin = false, style = {} }) {
 // Design tokens
 // ---------------------------------------------------------------------------
 const COLORS = {
-  bg: "#FBFAF6", ink: "#22261E", inkSoft: "#5B6156",
-  sage: "#3F6657", sageLight: "#E4ECE6",
-  urgent: "#B5651D", urgentLight: "#F5E6D3",
-  line: "#E4DFD1", card: "#FFFFFF",
+  bg: "#ffffff", ink: "#1d1d1f", inkSoft: "#707070",
+  sage: "#0071e3", sageLight: "#f5f5f7",
+  link: "#0066cc",
+  urgent: "#b64400", urgentLight: "#f5f5f7",
+  line: "#d6d6d6", card: "#ffffff",
 };
+const CARD_SHADOW = "0 0 0 1px #e6e6e8";
+const FONT_DISPLAY = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+const FONT_TEXT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 const CHILD_PALETTE = ["#3E5C8A", "#A9506B", "#4C8068", "#B5651D", "#6B5AA8", "#2F7A7A"];
 
 function fmtDateTime(iso) {
@@ -104,7 +108,7 @@ function KidChip({ kid, size = "sm" }) {
 function TopBar({ title, subtitle }) {
   return (
     <div className="px-5 md:px-8 pt-6 pb-4">
-      <h1 className="text-[26px] leading-tight" style={{ fontFamily: "'Fraunces', serif", color: COLORS.ink, fontWeight: 600 }}>{title}</h1>
+      <h1 className="text-[28px] leading-tight" style={{ fontFamily: FONT_DISPLAY, color: COLORS.ink, fontWeight: 600, letterSpacing: "-0.3px" }}>{title}</h1>
       {subtitle && <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>{subtitle}</p>}
     </div>
   );
@@ -201,7 +205,7 @@ function TodayScreen() {
           {events.length === 0 ? (
             <EmptyNote text="Пока ничего не запланировано — добавьте событие во вкладке «Календарь»." />
           ) : (
-            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="overflow-hidden" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
               {events.map((e, idx) => {
                 const kid = kidOf(e.child_id);
                 return (
@@ -225,7 +229,7 @@ function TodayScreen() {
           {notes.length === 0 ? (
             <EmptyNote text="Пока нет ни одной записи — добавьте во «Входящих» или в карточке ребёнка." />
           ) : (
-            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="overflow-hidden" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
               {notes.map((n, idx) => {
                 const kid = kidOf(n.child_id);
                 return (
@@ -282,18 +286,18 @@ function InboxScreen() {
     <div className="pb-6">
       <TopBar title="Входящие" subtitle="Записывайте сюда всё, что нужно не забыть" />
       <div className="px-5 md:px-8 mb-5">
-        <div className="rounded-2xl p-3" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-3" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
             placeholder="Например: у Арсения тренировка в четверг в 18:00"
-            className="w-full rounded-xl px-3 py-2 text-[14px] outline-none resize-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            className="w-full rounded-xl px-3 py-2 text-[14px] outline-none resize-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
           <div className="flex items-center gap-2 mt-2">
             {kids.length > 0 && (
-              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="rounded-xl px-2 py-2 text-[13px] flex-1" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }}>
+              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="rounded-xl px-2 py-2 text-[13px] flex-1" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }}>
                 <option value="">Без привязки к ребёнку</option>
                 {kids.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
               </select>
             )}
-            <button disabled={saving || !text.trim()} onClick={send} className="rounded-xl px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
+            <button disabled={saving || !text.trim()} onClick={send} className="rounded-full px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
               {saving ? "Сохраняю…" : "Сохранить"}
             </button>
           </div>
@@ -307,7 +311,7 @@ function InboxScreen() {
         ) : entries.map((e) => {
           const kid = kidOf(e.child_id);
           return (
-            <div key={e.id} className="rounded-xl p-3" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+            <div key={e.id} className="rounded-xl p-3" style={{ background: COLORS.card, boxShadow: CARD_SHADOW }}>
               {kid && <div className="mb-1"><KidChip kid={kid} /></div>}
               <p className="text-[14px] leading-snug" style={{ color: COLORS.ink }}>{e.text}</p>
               <p className="text-[12px] mt-1" style={{ color: COLORS.inkSoft }}>{fmtDateTime(e.created_at)}</p>
@@ -373,21 +377,21 @@ function CalendarScreen() {
       </div>
       {showAdd && (
         <div className="px-5 md:px-8 mb-5">
-          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-4" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Что за событие"
-              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              className="w-full rounded-full px-3 py-2 text-[14px] mb-2 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
             <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              className="w-full rounded-full px-3 py-2 text-[14px] mb-2 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Место (необязательно)"
-              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              className="w-full rounded-full px-3 py-2 text-[14px] mb-2 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
             {kids.length > 0 && (
-              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="w-full rounded-xl px-3 py-2 text-[14px] mb-3" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }}>
+              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="w-full rounded-xl px-3 py-2 text-[14px] mb-3" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }}>
                 <option value="">Без привязки к ребёнку</option>
                 {kids.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
               </select>
             )}
             <button disabled={saving || !title.trim() || !when} onClick={addEvent}
-              className="w-full rounded-xl py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+              className="w-full rounded-full py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
               {saving ? "Сохраняю…" : "Сохранить"}
             </button>
           </div>
@@ -399,7 +403,7 @@ function CalendarScreen() {
         ) : Object.entries(groups).map(([day, items]) => (
           <div key={day}>
             <div className="text-[12.5px] font-semibold mb-1.5" style={{ color: COLORS.inkSoft }}>{day}</div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="overflow-hidden" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
               {items.map((it, idx) => {
                 const kid = kidOf(it.child_id);
                 return (
@@ -482,7 +486,7 @@ function ChildrenScreen() {
         {kids.map((k) => (
           <button key={k.id} onClick={() => setActiveKidId(k.id)} className="rounded-2xl px-4 py-3 text-left"
             style={{ background: activeKidId === k.id ? k.color + "22" : COLORS.card, border: `1px solid ${activeKidId === k.id ? k.color : COLORS.line}` }}>
-            <p className="text-[15px] font-medium" style={{ color: activeKidId === k.id ? k.color : COLORS.ink, fontFamily: "'Fraunces', serif" }}>{k.name}</p>
+            <p className="text-[15px] font-medium" style={{ color: activeKidId === k.id ? k.color : COLORS.ink, fontFamily: FONT_DISPLAY }}>{k.name}</p>
             {k.age != null && <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{k.age} лет</p>}
           </button>
         ))}
@@ -495,13 +499,13 @@ function ChildrenScreen() {
 
       {showAdd && (
         <div className="px-5 md:px-8 mb-5">
-          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-4" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя ребёнка"
-              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              className="w-full rounded-full px-3 py-2 text-[14px] mb-2 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
             <input value={newAge} onChange={(e) => setNewAge(e.target.value.replace(/\D/g, ""))} placeholder="Возраст (необязательно)"
-              className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              className="w-full rounded-full px-3 py-2 text-[14px] mb-3 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
             <button disabled={saving || !newName.trim()} onClick={addChild}
-              className="w-full rounded-xl py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+              className="w-full rounded-full py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
               {saving ? "Сохраняю…" : "Сохранить"}
             </button>
           </div>
@@ -516,13 +520,13 @@ function ChildrenScreen() {
 
       {activeKid && (
         <div className="px-5 md:px-8">
-          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-4" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
             <h2 className="text-[14.5px] font-medium mb-3" style={{ color: COLORS.ink }}>Заметки и данные — {activeKid.name}</h2>
             <div className="flex gap-2 mb-3">
               <input value={noteText} onChange={(e) => setNoteText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addNote()}
                 placeholder="Школа, секции, врачи, что угодно…"
-                className="flex-1 rounded-xl px-3 py-2 text-[14px] outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
-              <button onClick={addNote} className="rounded-xl px-3 shrink-0" style={{ background: COLORS.sage, color: "#fff" }}>
+                className="flex-1 rounded-full px-3 py-2 text-[14px] outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
+              <button onClick={addNote} className="rounded-full px-3 shrink-0" style={{ background: COLORS.sage, color: "#fff" }}>
                 <Icon name="send" size={14} />
               </button>
             </div>
@@ -610,12 +614,12 @@ function FamilyScreen() {
     <div className="pb-6">
       <TopBar title="Семья" subtitle={email} />
       <div className="px-5 md:px-8 space-y-4">
-        <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-4" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
           <h2 className="text-[14.5px] font-medium mb-1" style={{ color: COLORS.ink }}>Пригласить мужа/жену</h2>
           <p className="text-[13px] mb-3" style={{ color: COLORS.inkSoft }}>
             Сгенерируйте код и отправьте партнёру — после входа по коду он увидит тех же детей и то же расписание.
           </p>
-          <button disabled={generating} onClick={createCode} className="rounded-xl px-4 py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+          <button disabled={generating} onClick={createCode} className="rounded-full px-4 py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
             {generating ? "Создаю…" : "Создать код приглашения"}
           </button>
           <div className="mt-3">
@@ -636,12 +640,12 @@ function FamilyScreen() {
           </div>
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="p-4" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
           <h2 className="text-[14.5px] font-medium mb-3" style={{ color: COLORS.ink }}>У меня есть код</h2>
           <div className="flex gap-2">
             <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="FAM-XXXXXXXX"
-              className="flex-1 rounded-xl px-3 py-2 text-[14px] outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
-            <button disabled={joining || !joinCode.trim()} onClick={join} className="rounded-xl px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
+              className="flex-1 rounded-full px-3 py-2 text-[14px] outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
+            <button disabled={joining || !joinCode.trim()} onClick={join} className="rounded-full px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
               {joining ? "…" : "Присоединиться"}
             </button>
           </div>
@@ -673,14 +677,14 @@ function AskScreen() {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
-              style={m.role === "user" ? { background: COLORS.sage, color: "#fff", borderBottomRightRadius: 4 } : { background: COLORS.card, color: COLORS.ink, border: `1px solid ${COLORS.line}`, borderBottomLeftRadius: 4 }}>
+              style={m.role === "user" ? { background: COLORS.sage, color: "#fff", borderBottomRightRadius: 4 } : { background: COLORS.card, color: COLORS.ink, boxShadow: CARD_SHADOW, borderBottomLeftRadius: 4 }}>
               {m.text}
             </div>
           </div>
         ))}
       </div>
       <div className="px-5 md:px-8 mt-4">
-        <div className="flex items-center gap-2 rounded-2xl px-3 py-2" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="flex items-center gap-2 px-3 py-2" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
           <input value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(value)}
             placeholder="Спроси о детях…" className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: COLORS.ink }} />
           <button onClick={() => send(value)} className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: COLORS.sage, color: "#fff" }}>
@@ -719,22 +723,22 @@ function AuthGate() {
   };
 
   return (
-    <div className="w-full min-h-screen flex justify-center items-center" style={{ background: "#EDEAE0" }}>
+    <div className="w-full min-h-screen flex justify-center items-center" style={{ background: "#f5f5f7" }}>
       <div className="w-full" style={{ maxWidth: 380, fontFamily: "'Inter', sans-serif" }}>
         <div className="px-5 mb-6 text-center">
-          <h1 className="text-[26px]" style={{ fontFamily: "'Fraunces', serif", color: COLORS.ink, fontWeight: 600 }}>Второй мозг родителя</h1>
+          <h1 className="text-[26px]" style={{ fontFamily: FONT_DISPLAY, color: COLORS.ink, fontWeight: 600 }}>Второй мозг родителя</h1>
           <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>Войдите, чтобы продолжить</p>
         </div>
-        <div className="mx-5 rounded-2xl p-5" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+ <div className="mx-5 p-5" style={{ background: COLORS.card, boxShadow: CARD_SHADOW, borderRadius: 28 }}>
           <label className="text-[12.5px] block mb-1" style={{ color: COLORS.inkSoft }}>Email</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-            className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            className="w-full rounded-full px-3 py-2 text-[14px] mb-3 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
           <label className="text-[12.5px] block mb-1" style={{ color: COLORS.inkSoft }}>Пароль</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-            className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            className="w-full rounded-full px-3 py-2 text-[14px] mb-3 outline-none" style={{ boxShadow: CARD_SHADOW, color: COLORS.ink }} />
           <div className="flex gap-2">
-            <button disabled={busy} onClick={signIn} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white" style={{ background: COLORS.sage }}>Войти</button>
-            <button disabled={busy} onClick={signUp} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.sage, border: `1px solid ${COLORS.sage}` }}>Создать аккаунт</button>
+            <button disabled={busy} onClick={signIn} className="flex-1 rounded-full py-2.5 text-[13.5px] font-medium text-white" style={{ background: COLORS.sage }}>Войти</button>
+            <button disabled={busy} onClick={signUp} className="flex-1 rounded-full py-2.5 text-[13.5px] font-medium" style={{ background: "transparent", color: COLORS.ink, border: "1px solid #86868b" }}>Создать аккаунт</button>
           </div>
           {msg && <p className="text-[12.5px] mt-3" style={{ color: msg.ok ? COLORS.sage : COLORS.urgent }}>{msg.text}</p>}
         </div>
@@ -760,11 +764,11 @@ function MainApp() {
   const ActiveScreen = TABS.find((t) => t.key === tab).screen;
 
   return (
-    <div className="w-full min-h-screen md:flex" style={{ background: "#EDEAE0" }}>
-      <div className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:py-6 md:px-3" style={{ borderRight: `1px solid ${COLORS.line}`, background: COLORS.bg }}>
+    <div className="w-full min-h-screen md:flex" style={{ background: "#f5f5f7" }}>
+      <div className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:py-6 md:px-3" style={{ borderRight: `1px solid ${COLORS.line}`, background: "#f5f5f7" }}>
         <div className="px-3 mb-6 flex items-center gap-2">
           <span style={{ fontSize: 20 }}>🧠</span>
-          <p style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, color: COLORS.ink }}>Второй мозг</p>
+          <p style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 600, color: COLORS.ink }}>Второй мозг</p>
         </div>
         <div className="flex flex-col gap-1">
           {TABS.map((t) => {
@@ -785,7 +789,7 @@ function MainApp() {
           <div className="flex-1 overflow-y-auto pb-[84px] md:pb-6">
             <ActiveScreen />
           </div>
-          <div className="md:hidden fixed bottom-0 w-full max-w-[430px] flex items-stretch" style={{ background: COLORS.card, borderTop: `1px solid ${COLORS.line}`, paddingBottom: 8 }}>
+          <div className="md:hidden fixed bottom-0 w-full max-w-[430px] flex items-stretch" style={{ background: "#f5f5f7", borderTop: `1px solid ${COLORS.line}`, paddingBottom: 8 }}>
             {TABS.map((t) => {
               const active = tab === t.key;
               return (
@@ -813,7 +817,7 @@ function App() {
 
   if (session === undefined) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center" style={{ background: "#EDEAE0" }}>
+      <div className="w-full min-h-screen flex items-center justify-center" style={{ background: "#f5f5f7" }}>
         <Icon name="loader" size={22} spin style={{ color: COLORS.sage }} />
       </div>
     );
