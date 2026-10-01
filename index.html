@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Второй мозг родителя</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap');
   html, body { margin:0; padding:0; background:#EDEAE0; }
@@ -13,16 +14,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const { useState } = React;
+const { useState, useEffect } = React;
+
+const SUPABASE_URL = 'https://rmjwdzoffrnuqokkzgdn.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtandkem9mZnJudXFva2t6Z2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMjA4ODAsImV4cCI6MjA5NzY5Njg4MH0.cI-Vs-n8uRyBmJNF4RAL3c4sxC98KHIJt769NUD4jEM';
+const sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
 
 // ---------------------------------------------------------------------------
 // Tiny inline icon set (no external icon package — keeps this file self-contained)
 // ---------------------------------------------------------------------------
-function Icon({ name, size = 16, className = "", spin = false }) {
+function Icon({ name, size = 16, className = "", spin = false, style = {} }) {
   const s = { width: size, height: size };
   const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
   const paths = {
@@ -32,6 +38,7 @@ function Icon({ name, size = 16, className = "", spin = false }) {
     users: <><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6"/><path d="M16 8.5a3 3 0 100-5"/><path d="M22 20c0-2.7-2-5-5-5.7"/></>,
     sparkles: <><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></>,
     check: <path d="M20 6L9 17l-5-5"/>,
+    plus: <><path d="M12 5v14"/><path d="M5 12h14"/></>,
     x: <><path d="M18 6L6 18"/><path d="M6 6l12 12"/></>,
     chevronDown: <path d="M6 9l6 6 6-6"/>,
     chevronRight: <path d="M9 6l6 6-6 6"/>,
@@ -54,7 +61,7 @@ function Icon({ name, size = 16, className = "", spin = false }) {
     send: <path d="M4 12l16-8-6 16-3-6-7-2z"/>,
   };
   return (
-    <svg {...s} {...common} className={`${className} ${spin ? "animate-spin" : ""}`}>
+    <svg {...s} {...common} style={style} className={`${className} ${spin ? "animate-spin" : ""}`}>
       {paths[name] || null}
     </svg>
   );
@@ -69,97 +76,25 @@ const COLORS = {
   urgent: "#B5651D", urgentLight: "#F5E6D3",
   line: "#E4DFD1", card: "#FFFFFF",
 };
+const CHILD_PALETTE = ["#3E5C8A", "#A9506B", "#4C8068", "#B5651D", "#6B5AA8", "#2F7A7A"];
 
-const KIDS = {
-  arseniy: { id: "arseniy", name: "Арсений", age: 8, color: "#3E5C8A", tint: "#E7ECF4" },
-  ameliya: { id: "ameliya", name: "Амелия", age: 6, color: "#A9506B", tint: "#F5E9ED" },
-};
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+function fmtDay(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+}
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
 
-const TODAY_SECTIONS = [
-  { key: "urgent", title: "Требует решения", items: [
-    { kid: "arseniy", icon: "alertTriangle", text: "Уточнить: скриншот из чата — это про соревнования Арсения?", sub: "Из Inbox · не хватает данных", tone: "urgent" },
-  ]},
-  { key: "soon", title: "Через 3 дня", items: [
-    { kid: "arseniy", icon: "bag", text: "Соревнования у Арсения в субботу, 11:00", sub: "Нужно: белая футболка (не куплена), справка (просрочена)", tone: "urgent" },
-  ]},
-  { key: "week", title: "Ближайшие дни", items: [
-    { kid: "arseniy", icon: "clock", text: "Тренировка — завтра, 18:00", sub: "СК «Локомотив» · тренер Иван Петров", tone: "default" },
-    { kid: "ameliya", icon: "clock", text: "Утренник в саду — 20 сентября, 10:00", sub: "Нужен костюм — уточнить какой", tone: "default" },
-  ]},
-  { key: "overdue", title: "Просрочено", items: [
-    { kid: "arseniy", icon: "alertTriangle", text: "Медсправка для секции истекла 10 сентября", sub: "Нужна новая — иначе не допустят к тренировкам", tone: "urgent" },
-  ]},
-  { key: "later", title: "Скоро понадобится", items: [
-    { kid: "ameliya", icon: "star", text: "День рождения Амелии — 28 сентября", sub: "Через 12 дней · стоит начать думать про подарок", tone: "default" },
-    { kid: "ameliya", icon: "bell", text: "Стоматолог — 15 октября, 16:30", sub: "Напомнить за неделю? Ещё не подтверждено", tone: "default" },
-  ]},
-];
-
-const INITIAL_INBOX = [
-  { id: "i1", kind: "message", from: "Вы", preview: "У Арсения в четверг тренировка в 18:00", status: "draft",
-    draft: { kid: "arseniy", title: "Тренировка", when: "чт, 17 сентября · 18:00", where: "СК «Локомотив»", note: "Совпадает с обычным расписанием секции (вт/чт)" } },
-  { id: "i2", kind: "image", from: "Фото объявления", preview: "Объявление на входе в сад Амелии", status: "draft",
-    draft: { kid: "ameliya", title: "Утренник в саду", when: "вс, 20 сентября · 10:00", where: "Группа «Ромашка»", note: "Распознано с фото: «Приглашаем на праздник Осени»" } },
-  { id: "i3", kind: "mic", from: "Голосовое, 0:08", preview: "«Запиши Арсения на тренировку в субботу»", status: "draft",
-    draft: { kid: "arseniy", title: "Доп. тренировка (футбол)", when: "сб, 19 сентября · время уточняется", where: "СК «Локомотив» (обычное место секции)", note: "Определил по истории: секция — футбол, тренер Иван Петров. Уточнять не стал — данных достаточно." } },
-  { id: "i4", kind: "message", from: "Вы", preview: "Дантист Амелии 15 октября в 16:30", status: "draft",
-    draft: { kid: "ameliya", title: "Стоматолог", when: "чт, 15 октября · 16:30", where: "уточнить клинику", note: null, followups: ["Напомнить за неделю", "Спросить дату следующего визита при подтверждении"] } },
-  { id: "i5", kind: "image", from: "Переслано из чата класса", preview: "«Соревнования в субботу, начало в 11, приехать за полчаса»", status: "clarify",
-    question: "Это про Арсения — школьные соревнования по футболу?" },
-  { id: "i6", kind: "file", from: "raspisanie_4chetvert.pdf", preview: "Расписание секций на четверть", status: "processing" },
-];
-
-const KID_KB = {
-  arseniy: [
-    { icon: "cap", title: "Школа", rows: ["Школа №7, 2 «Б» класс", "Классный руководитель: Ольга Сергеевна"] },
-    { icon: "star", title: "Секции", rows: ["Футбол — вт/чт 18:00, СК «Локомотив»", "Тренер: Иван Петров, +7 902 xxx-xx-01"] },
-    { icon: "heart", title: "Здоровье", rows: ["Педиатр: Смирнова А.В., детская поликлиника №3", "Медсправка для секции: истекла 10.09"] },
-    { icon: "folder", title: "Документы", rows: ["Свидетельство о рождении — скан сохранён", "Справка в секцию — нужно обновить"] },
-    { icon: "ruler", title: "Размеры", rows: ["Рост 132 см", "Одежда 128 см, обувь 33"] },
-    { icon: "phone", title: "Контакты", rows: ["Тренер Иван Петров", "Классный руководитель Ольга Сергеевна"] },
-  ],
-  ameliya: [
-    { icon: "cap", title: "Сад", rows: ["Детский сад №14, группа «Ромашка»", "Воспитатель: Наталья Ивановна"] },
-    { icon: "star", title: "Секции", rows: ["Рисование — сб 11:00", "Плавание — начали обсуждать, не записаны"] },
-    { icon: "heart", title: "Здоровье", rows: ["Стоматолог: приём 15.10 в 16:30", "Аллергия: не указано"] },
-    { icon: "folder", title: "Документы", rows: ["Медкарта в саду — актуальна"] },
-    { icon: "ruler", title: "Размеры", rows: ["Рост 118 см", "Одежда 116 см, обувь 28"] },
-    { icon: "phone", title: "Контакты", rows: ["Воспитатель Наталья Ивановна"] },
-  ],
-};
-
-const WEEK = [
-  { day: "Пн 14", items: [] },
-  { day: "Вт 15", items: [{ kid: "arseniy", time: "18:00", title: "Тренировка", place: "СК «Локомотив»" }] },
-  { day: "Ср 16 · сегодня", items: [], today: true },
-  { day: "Чт 17", items: [{ kid: "arseniy", time: "18:00", title: "Тренировка", place: "СК «Локомотив»" }] },
-  { day: "Пт 18", items: [] },
-  { day: "Сб 19", items: [
-      { kid: "arseniy", time: "10:30", title: "Приезд к старту", place: "Стадион «Юность»" },
-      { kid: "arseniy", time: "11:00", title: "Соревнования", place: "Стадион «Юность»" },
-      { kid: "ameliya", time: "11:00", title: "Рисование", place: "Студия «Радуга»" },
-    ], conflict: true },
-  { day: "Вс 20", items: [{ kid: "ameliya", time: "10:00", title: "Утренник в саду", place: "Группа «Ромашка»" }] },
-];
-
-const ASK_SUGGESTIONS = [
-  "Что у детей на этой неделе?",
-  "Что нужно сделать по Арсению до пятницы?",
-  "Когда у Амелии следующий визит к врачу?",
-];
-
-const ASK_ANSWERS = {
-  "Что у детей на этой неделе?": "На этой неделе: у Арсения тренировка завтра в 18:00 и соревнования в субботу в 11:00 (нужна белая футболка и справка). У Амелии — утренник в саду в воскресенье в 10:00. В субботу в 11:00 тренировка Амелии совпадает по времени с соревнованиями Арсения — возможно, понадобится помощь, чтобы успеть в оба места.",
-  "Что нужно сделать по Арсению до пятницы?": "До пятницы: купить белую футболку для соревнований и оформить медсправку — она просрочена с 10 сентября. Тренировка в четверг в 18:00 — как обычно, действий не требует.",
-  "Когда у Амелии следующий визит к врачу?": "15 октября в 16:30 — приём у стоматолога. Клиника пока не уточнена. Могу напомнить за неделю, если подтвердишь это событие в Inbox.",
-};
-
-function KidTag({ kidId, size = "sm" }) {
-  const kid = KIDS[kidId];
+function KidChip({ kid, size = "sm" }) {
   if (!kid) return null;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1"}`}
-      style={{ background: kid.tint, color: kid.color }}>
+      style={{ background: kid.color + "22", color: kid.color }}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: kid.color }} />
       {kid.name}
     </span>
@@ -168,38 +103,312 @@ function KidTag({ kidId, size = "sm" }) {
 
 function TopBar({ title, subtitle }) {
   return (
-    <div className="px-5 pt-6 pb-4">
+    <div className="px-5 md:px-8 pt-6 pb-4">
       <h1 className="text-[26px] leading-tight" style={{ fontFamily: "'Fraunces', serif", color: COLORS.ink, fontWeight: 600 }}>{title}</h1>
       {subtitle && <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>{subtitle}</p>}
     </div>
   );
 }
 
-function TodayScreen() {
+function EmptyNote({ text }) {
+  return (
+    <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: COLORS.card, border: `1px dashed ${COLORS.line}`, color: COLORS.inkSoft }}>
+      {text}
+    </div>
+  );
+}
+
+function LoadingScreen({ title }) {
   return (
     <div className="pb-6">
-      <TopBar title="Сегодня" subtitle="Среда, 16 сентября" />
-      <div className="px-5 space-y-6">
-        {TODAY_SECTIONS.map((section) => (
-          <div key={section.key}>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[13px] font-semibold tracking-tight" style={{ color: COLORS.inkSoft }}>{section.title}</h2>
-              <span className="text-[12px]" style={{ color: COLORS.inkSoft }}>{section.items.length}</span>
-            </div>
+      <TopBar title={title} />
+      <div className="px-5 md:px-8 flex items-center gap-2" style={{ color: COLORS.inkSoft }}>
+        <Icon name="loader" size={15} spin /> <span className="text-[13.5px]">Загрузка…</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared family/children data hook — every screen that needs family context uses this
+// ---------------------------------------------------------------------------
+function useFamily() {
+  const [familyId, setFamilyId] = useState(null);
+  const [kids, setKids] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = async () => {
+    setLoading(true);
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    let { data: members } = await sb.from("family_members").select("family_id").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
+    let fid = members && members[0] ? members[0].family_id : null;
+
+    if (!fid) {
+      const { data: fam, error: famErr } = await sb.from("families").insert({ name: "Моя семья" }).select("id").single();
+      if (!famErr && fam) {
+        await sb.from("family_members").insert({ family_id: fam.id, user_id: user.id, role: "parent" });
+        fid = fam.id;
+      }
+    }
+    setFamilyId(fid);
+
+    if (fid) {
+      const { data: childrenData } = await sb.from("children").select("id, name, age, color").eq("family_id", fid).order("created_at");
+      setKids(childrenData || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { reload(); }, []);
+  return { familyId, kids, loading, reload };
+}
+
+// ---------------------------------------------------------------------------
+// Screen: Сегодня
+// ---------------------------------------------------------------------------
+function TodayScreen() {
+  const { familyId, kids, loading } = useFamily();
+  const [events, setEvents] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!familyId) return;
+    (async () => {
+      setLoadingData(true);
+      const { data: ev } = await sb.from("events").select("id, title, starts_at, location, child_id")
+        .eq("family_id", familyId).gte("starts_at", new Date().toISOString()).order("starts_at").limit(10);
+      const { data: nt } = await sb.from("vtoroy_mozg_entries").select("id, text, created_at, child_id")
+        .eq("family_id", familyId).order("created_at", { ascending: false }).limit(5);
+      setEvents(ev || []);
+      setNotes(nt || []);
+      setLoadingData(false);
+    })();
+  }, [familyId]);
+
+  const kidOf = (id) => kids.find((k) => k.id === id);
+
+  if (loading || loadingData) return <LoadingScreen title="Сегодня" />;
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Сегодня" subtitle={new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })} />
+      <div className="px-5 md:px-8 space-y-6">
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-tight mb-2" style={{ color: COLORS.inkSoft }}>Ближайшие события</h2>
+          {events.length === 0 ? (
+            <EmptyNote text="Пока ничего не запланировано — добавьте событие во вкладке «Календарь»." />
+          ) : (
             <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
-              {section.items.map((item, idx) => {
-                const kid = KIDS[item.kid];
+              {events.map((e, idx) => {
+                const kid = kidOf(e.child_id);
                 return (
-                  <div key={idx} className="flex gap-3 px-4 py-3.5"
-                    style={{ borderLeft: `3px solid ${kid.color}`, borderBottom: idx < section.items.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: item.tone === "urgent" ? COLORS.urgentLight : COLORS.sageLight, color: item.tone === "urgent" ? COLORS.urgent : COLORS.sage }}>
-                      <Icon name={item.icon} size={15} />
-                    </div>
+                  <div key={e.id} className="flex gap-3 px-4 py-3.5"
+                    style={{ borderLeft: `3px solid ${kid ? kid.color : COLORS.sage}`, borderBottom: idx < events.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap"><KidTag kidId={item.kid} /></div>
-                      <p className="text-[14.5px] mt-1 leading-snug" style={{ color: COLORS.ink }}>{item.text}</p>
-                      <p className="text-[12.5px] mt-0.5" style={{ color: COLORS.inkSoft }}>{item.sub}</p>
+                      {kid && <div className="mb-1"><KidChip kid={kid} /></div>}
+                      <p className="text-[14.5px] leading-snug" style={{ color: COLORS.ink }}>{e.title}</p>
+                      <p className="text-[12.5px] mt-0.5" style={{ color: COLORS.inkSoft }}>
+                        {fmtDateTime(e.starts_at)}{e.location ? ` · ${e.location}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div>
+          <h2 className="text-[13px] font-semibold tracking-tight mb-2" style={{ color: COLORS.inkSoft }}>Недавние записи</h2>
+          {notes.length === 0 ? (
+            <EmptyNote text="Пока нет ни одной записи — добавьте во «Входящих» или в карточке ребёнка." />
+          ) : (
+            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              {notes.map((n, idx) => {
+                const kid = kidOf(n.child_id);
+                return (
+                  <div key={n.id} className="px-4 py-3" style={{ borderBottom: idx < notes.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
+                    {kid && <div className="mb-1"><KidChip kid={kid} /></div>}
+                    <p className="text-[14px] leading-snug" style={{ color: COLORS.ink }}>{n.text}</p>
+                    <p className="text-[12px] mt-0.5" style={{ color: COLORS.inkSoft }}>{fmtDateTime(n.created_at)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen: Входящие
+// ---------------------------------------------------------------------------
+function InboxScreen() {
+  const { familyId, kids, loading } = useFamily();
+  const [entries, setEntries] = useState([]);
+  const [loadingEntries, setLoadingEntries] = useState(true);
+  const [text, setText] = useState("");
+  const [childId, setChildId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async (fid) => {
+    setLoadingEntries(true);
+    const { data } = await sb.from("vtoroy_mozg_entries").select("id, text, created_at, child_id").eq("family_id", fid).order("created_at", { ascending: false });
+    setEntries(data || []);
+    setLoadingEntries(false);
+  };
+  useEffect(() => { if (familyId) load(familyId); }, [familyId]);
+
+  const send = async () => {
+    if (!text.trim() || !familyId) return;
+    setSaving(true);
+    const { data: { user } } = await sb.auth.getUser();
+    const { error } = await sb.from("vtoroy_mozg_entries").insert({
+      family_id: familyId, child_id: childId || null, text: text.trim(), created_by: user?.id,
+    });
+    setSaving(false);
+    if (!error) { setText(""); setChildId(""); load(familyId); }
+  };
+
+  const kidOf = (id) => kids.find((k) => k.id === id);
+
+  if (loading) return <LoadingScreen title="Входящие" />;
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Входящие" subtitle="Записывайте сюда всё, что нужно не забыть" />
+      <div className="px-5 md:px-8 mb-5">
+        <div className="rounded-2xl p-3" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
+            placeholder="Например: у Арсения тренировка в четверг в 18:00"
+            className="w-full rounded-xl px-3 py-2 text-[14px] outline-none resize-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+          <div className="flex items-center gap-2 mt-2">
+            {kids.length > 0 && (
+              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="rounded-xl px-2 py-2 text-[13px] flex-1" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }}>
+                <option value="">Без привязки к ребёнку</option>
+                {kids.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+              </select>
+            )}
+            <button disabled={saving || !text.trim()} onClick={send} className="rounded-xl px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
+              {saving ? "Сохраняю…" : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="px-5 md:px-8 space-y-2">
+        {loadingEntries ? (
+          <p className="text-[13px]" style={{ color: COLORS.inkSoft }}>Загрузка…</p>
+        ) : entries.length === 0 ? (
+          <EmptyNote text="Пока пусто." />
+        ) : entries.map((e) => {
+          const kid = kidOf(e.child_id);
+          return (
+            <div key={e.id} className="rounded-xl p-3" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              {kid && <div className="mb-1"><KidChip kid={kid} /></div>}
+              <p className="text-[14px] leading-snug" style={{ color: COLORS.ink }}>{e.text}</p>
+              <p className="text-[12px] mt-1" style={{ color: COLORS.inkSoft }}>{fmtDateTime(e.created_at)}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen: Календарь семьи
+// ---------------------------------------------------------------------------
+function CalendarScreen() {
+  const { familyId, kids, loading } = useFamily();
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [title, setTitle] = useState("");
+  const [when, setWhen] = useState("");
+  const [childId, setChildId] = useState("");
+  const [location, setLocation] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadEvents = async (fid) => {
+    setLoadingEvents(true);
+    const { data } = await sb.from("events").select("id, title, starts_at, location, child_id").eq("family_id", fid).order("starts_at");
+    setEvents(data || []);
+    setLoadingEvents(false);
+  };
+  useEffect(() => { if (familyId) loadEvents(familyId); }, [familyId]);
+
+  const addEvent = async () => {
+    if (!title.trim() || !when || !familyId) return;
+    setSaving(true);
+    const { data: { user } } = await sb.auth.getUser();
+    const { error } = await sb.from("events").insert({
+      family_id: familyId, child_id: childId || null, title: title.trim(),
+      starts_at: new Date(when).toISOString(), location: location.trim() || null, created_by: user?.id,
+    });
+    setSaving(false);
+    if (!error) {
+      setTitle(""); setWhen(""); setChildId(""); setLocation(""); setShowAdd(false);
+      loadEvents(familyId);
+    }
+  };
+
+  const kidOf = (id) => kids.find((k) => k.id === id);
+  const groups = {};
+  events.forEach((e) => { const key = fmtDay(e.starts_at); (groups[key] = groups[key] || []).push(e); });
+
+  if (loading || loadingEvents) return <LoadingScreen title="Календарь семьи" />;
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Календарь семьи" />
+      <div className="px-5 md:px-8 mb-4">
+        <button onClick={() => setShowAdd((v) => !v)} className="rounded-2xl px-4 py-2.5 flex items-center gap-1.5"
+          style={{ background: COLORS.card, border: `1px dashed ${COLORS.line}`, color: COLORS.sage }}>
+          <Icon name="plus" size={14} /><span className="text-[13.5px] font-medium">Добавить событие</span>
+        </button>
+      </div>
+      {showAdd && (
+        <div className="px-5 md:px-8 mb-5">
+          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Что за событие"
+              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)}
+              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Место (необязательно)"
+              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            {kids.length > 0 && (
+              <select value={childId} onChange={(e) => setChildId(e.target.value)} className="w-full rounded-xl px-3 py-2 text-[14px] mb-3" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }}>
+                <option value="">Без привязки к ребёнку</option>
+                {kids.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+              </select>
+            )}
+            <button disabled={saving || !title.trim() || !when} onClick={addEvent}
+              className="w-full rounded-xl py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+              {saving ? "Сохраняю…" : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="px-5 md:px-8 space-y-4">
+        {Object.keys(groups).length === 0 ? (
+          <EmptyNote text="Событий пока нет." />
+        ) : Object.entries(groups).map(([day, items]) => (
+          <div key={day}>
+            <div className="text-[12.5px] font-semibold mb-1.5" style={{ color: COLORS.inkSoft }}>{day}</div>
+            <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+              {items.map((it, idx) => {
+                const kid = kidOf(it.child_id);
+                return (
+                  <div key={it.id} className="flex items-center gap-3 px-4 py-3"
+                    style={{ borderLeft: `3px solid ${kid ? kid.color : COLORS.sage}`, borderBottom: idx < items.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
+                    <span className="text-[13px] font-medium w-11 shrink-0" style={{ color: COLORS.ink }}>{fmtTime(it.starts_at)}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">{kid && <KidChip kid={kid} />}<span className="text-[14px]" style={{ color: COLORS.ink }}>{it.title}</span></div>
+                      {it.location && <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: COLORS.inkSoft }}><Icon name="mapPin" size={11} /> {it.location}</p>}
                     </div>
                   </div>
                 );
@@ -212,198 +421,255 @@ function TodayScreen() {
   );
 }
 
-function InboxScreen() {
-  const [items, setItems] = useState(INITIAL_INBOX);
-  const [openId, setOpenId] = useState(null);
+// ---------------------------------------------------------------------------
+// Screen: Дети
+// ---------------------------------------------------------------------------
+function ChildrenScreen() {
+  const { familyId, kids, loading, reload } = useFamily();
+  const [activeKidId, setActiveKidId] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newAge, setNewAge] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState("");
+  const [notesLoading, setNotesLoading] = useState(false);
 
-  const confirm = (id) => { setItems((p) => p.map((it) => it.id === id ? { ...it, status: "confirmed" } : it)); setOpenId(null); };
-  const clarify = (id, ok) => {
-    setItems((p) => p.map((it) => it.id === id ? (ok ? {
-      ...it, status: "draft",
-      draft: { kid: "arseniy", title: "Соревнования по футболу", when: "сб, 19 сентября · 11:00", where: "Стадион «Юность»", note: "Приехать за 30 минут — к 10:30" },
-    } : { ...it, status: "confirmed" }) : it));
+  useEffect(() => { if (!activeKidId && kids.length > 0) setActiveKidId(kids[0].id); }, [kids]);
+
+  const loadNotes = async (childId) => {
+    if (!childId) { setNotes([]); return; }
+    setNotesLoading(true);
+    const { data } = await sb.from("vtoroy_mozg_entries").select("id, text, created_at").eq("child_id", childId).order("created_at", { ascending: false });
+    setNotes(data || []);
+    setNotesLoading(false);
+  };
+  useEffect(() => { loadNotes(activeKidId); }, [activeKidId]);
+
+  const addChild = async () => {
+    if (!newName.trim() || !familyId) return;
+    setSaving(true);
+    const color = CHILD_PALETTE[kids.length % CHILD_PALETTE.length];
+    const { data, error } = await sb.from("children").insert({
+      family_id: familyId, name: newName.trim(), age: newAge ? parseInt(newAge, 10) : null, color,
+    }).select("id, name, age, color").single();
+    setSaving(false);
+    if (error) return;
+    await reload();
+    setActiveKidId(data.id);
+    setNewName(""); setNewAge(""); setShowAdd(false);
   };
 
-  return (
-    <div className="pb-6">
-      <TopBar title="AI Inbox" subtitle="Скидывай сюда всё — я разберу" />
-      <div className="px-5 space-y-3">
-        {items.map((item) => {
-          const isOpen = openId === item.id;
-          return (
-            <div key={item.id} className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
-              <button onClick={() => setOpenId(isOpen ? null : item.id)} className="w-full flex items-start gap-3 px-4 py-3.5 text-left">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: COLORS.sageLight, color: COLORS.sage }}>
-                  <Icon name={item.kind} size={15} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{item.from}</p>
-                  <p className="text-[14.5px] mt-0.5 leading-snug" style={{ color: COLORS.ink }}>{item.preview}</p>
-                  <div className="mt-1.5">
-                    {item.status === "confirmed" && <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: COLORS.sage }}><Icon name="check" size={13} /> Добавлено</span>}
-                    {item.status === "processing" && <span className="inline-flex items-center gap-1 text-[12px]" style={{ color: COLORS.inkSoft }}><Icon name="loader" size={13} spin /> Анализирую…</span>}
-                    {item.status === "clarify" && <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: COLORS.urgent }}><Icon name="alertTriangle" size={13} /> Нужно уточнение</span>}
-                    {item.status === "draft" && <span className="text-[12px] font-medium" style={{ color: COLORS.urgent }}>Проверь и подтверди</span>}
-                  </div>
-                </div>
-                <Icon name="chevronDown" size={16} className="mt-1 shrink-0" style={{ color: COLORS.inkSoft, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
-              </button>
+  const addNote = async () => {
+    if (!noteText.trim() || !activeKidId || !familyId) return;
+    const { data: { user } } = await sb.auth.getUser();
+    const { data, error } = await sb.from("vtoroy_mozg_entries").insert({
+      family_id: familyId, child_id: activeKidId, text: noteText.trim(), created_by: user?.id,
+    }).select("id, text, created_at").single();
+    if (error) return;
+    setNoteText("");
+    setNotes((p) => [data, ...p]);
+  };
 
-              {isOpen && item.status === "draft" && (
-                <div className="px-4 pb-4 pt-1" style={{ borderTop: `1px solid ${COLORS.line}` }}>
-                  <div className="rounded-xl p-3 mt-3" style={{ background: COLORS.bg }}>
-                    <div className="flex items-center gap-2 mb-2"><KidTag kidId={item.draft.kid} size="md" /></div>
-                    <p className="text-[15px] font-medium" style={{ color: COLORS.ink, fontFamily: "'Fraunces', serif" }}>{item.draft.title}</p>
-                    <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>{item.draft.when}</p>
-                    {item.draft.where && <p className="text-[13px] flex items-center gap-1 mt-0.5" style={{ color: COLORS.inkSoft }}><Icon name="mapPin" size={12} /> {item.draft.where}</p>}
-                    {item.draft.note && <p className="text-[12.5px] mt-2 italic" style={{ color: COLORS.sage }}>{item.draft.note}</p>}
-                    {item.draft.followups && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {item.draft.followups.map((f, i) => (
-                          <span key={i} className="text-[11.5px] px-2 py-1 rounded-full" style={{ background: COLORS.sageLight, color: COLORS.sage }}>+ {f}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={() => confirm(item.id)} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white flex items-center justify-center gap-1.5" style={{ background: COLORS.sage }}>
-                      <Icon name="check" size={15} /> Подтвердить
-                    </button>
-                    <button className="rounded-xl py-2.5 px-4 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.inkSoft, border: `1px solid ${COLORS.line}` }}>Исправить</button>
-                  </div>
-                </div>
-              )}
+  const activeKid = kids.find((k) => k.id === activeKidId);
 
-              {isOpen && item.status === "clarify" && (
-                <div className="px-4 pb-4 pt-1" style={{ borderTop: `1px solid ${COLORS.line}` }}>
-                  <p className="text-[13.5px] mt-3" style={{ color: COLORS.ink }}>{item.question}</p>
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={() => clarify(item.id, true)} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white" style={{ background: COLORS.sage }}>Да, это Арсений</button>
-                    <button onClick={() => clarify(item.id, false)} className="rounded-xl py-2.5 px-4 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.inkSoft, border: `1px solid ${COLORS.line}` }}>Нет, это не про детей</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function CalendarScreen() {
-  return (
-    <div className="pb-6">
-      <TopBar title="Календарь семьи" subtitle="14–20 сентября" />
-      <div className="px-5 space-y-3">
-        {WEEK.map((d) => (
-          <div key={d.day}>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[12.5px] font-semibold" style={{ color: d.today ? COLORS.sage : COLORS.inkSoft }}>{d.day}</span>
-              {d.conflict && <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: COLORS.urgentLight, color: COLORS.urgent }}><Icon name="alertTriangle" size={11} /> совпадение по времени</span>}
-            </div>
-            {d.items.length === 0 ? (
-              <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: COLORS.card, border: `1px dashed ${COLORS.line}`, color: COLORS.inkSoft }}>Ничего не запланировано</div>
-            ) : (
-              <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
-                {d.items.map((it, idx) => {
-                  const kid = KIDS[it.kid];
-                  return (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-3"
-                      style={{ borderLeft: `3px solid ${kid.color}`, borderBottom: idx < d.items.length - 1 ? `1px solid ${COLORS.line}` : "none" }}>
-                      <span className="text-[13px] font-medium w-11 shrink-0" style={{ color: COLORS.ink }}>{it.time}</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2"><KidTag kidId={it.kid} /><span className="text-[14px]" style={{ color: COLORS.ink }}>{it.title}</span></div>
-                        <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: COLORS.inkSoft }}><Icon name="mapPin" size={11} /> {it.place}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ChildrenScreen() {
-  const [activeKid, setActiveKid] = useState("arseniy");
-  const [openSection, setOpenSection] = useState(0);
-  const kid = KIDS[activeKid];
-  const sections = KID_KB[activeKid];
+  if (loading) return <LoadingScreen title="Дети" />;
 
   return (
     <div className="pb-6">
       <TopBar title="Дети" />
-      <div className="px-5 flex gap-2 mb-5">
-        {Object.values(KIDS).map((k) => (
-          <button key={k.id} onClick={() => { setActiveKid(k.id); setOpenSection(0); }} className="flex-1 rounded-2xl px-4 py-3 text-left"
-            style={{ background: activeKid === k.id ? k.tint : COLORS.card, border: `1px solid ${activeKid === k.id ? k.color : COLORS.line}` }}>
-            <p className="text-[15px] font-medium" style={{ color: activeKid === k.id ? k.color : COLORS.ink, fontFamily: "'Fraunces', serif" }}>{k.name}</p>
-            <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{k.age} лет</p>
+      <div className="px-5 md:px-8 flex gap-2 mb-4 flex-wrap">
+        {kids.map((k) => (
+          <button key={k.id} onClick={() => setActiveKidId(k.id)} className="rounded-2xl px-4 py-3 text-left"
+            style={{ background: activeKidId === k.id ? k.color + "22" : COLORS.card, border: `1px solid ${activeKidId === k.id ? k.color : COLORS.line}` }}>
+            <p className="text-[15px] font-medium" style={{ color: activeKidId === k.id ? k.color : COLORS.ink, fontFamily: "'Fraunces', serif" }}>{k.name}</p>
+            {k.age != null && <p className="text-[12px]" style={{ color: COLORS.inkSoft }}>{k.age} лет</p>}
           </button>
         ))}
+        <button onClick={() => setShowAdd((v) => !v)} className="rounded-2xl px-4 py-3 flex items-center gap-1.5"
+          style={{ background: COLORS.card, border: `1px dashed ${COLORS.line}`, color: COLORS.sage }}>
+          <Icon name="plus" size={14} />
+          <span className="text-[13.5px] font-medium">Добавить ребёнка</span>
+        </button>
       </div>
-      <div className="px-5 space-y-2.5">
-        {sections.map((sec, idx) => {
-          const isOpen = openSection === idx;
-          return (
-            <div key={sec.title} className="rounded-2xl overflow-hidden" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
-              <button onClick={() => setOpenSection(isOpen ? -1 : idx)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: kid.tint, color: kid.color }}><Icon name={sec.icon} size={15} /></div>
-                <span className="flex-1 text-[14.5px] font-medium" style={{ color: COLORS.ink }}>{sec.title}</span>
-                <Icon name="chevronRight" size={16} style={{ color: COLORS.inkSoft, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+
+      {showAdd && (
+        <div className="px-5 md:px-8 mb-5">
+          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя ребёнка"
+              className="w-full rounded-xl px-3 py-2 text-[14px] mb-2 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            <input value={newAge} onChange={(e) => setNewAge(e.target.value.replace(/\D/g, ""))} placeholder="Возраст (необязательно)"
+              className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            <button disabled={saving || !newName.trim()} onClick={addChild}
+              className="w-full rounded-xl py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+              {saving ? "Сохраняю…" : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {kids.length === 0 && !showAdd && (
+        <div className="px-5 md:px-8">
+          <EmptyNote text="Пока нет ни одного ребёнка — нажмите «Добавить ребёнка» выше." />
+        </div>
+      )}
+
+      {activeKid && (
+        <div className="px-5 md:px-8">
+          <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+            <h2 className="text-[14.5px] font-medium mb-3" style={{ color: COLORS.ink }}>Заметки и данные — {activeKid.name}</h2>
+            <div className="flex gap-2 mb-3">
+              <input value={noteText} onChange={(e) => setNoteText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addNote()}
+                placeholder="Школа, секции, врачи, что угодно…"
+                className="flex-1 rounded-xl px-3 py-2 text-[14px] outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+              <button onClick={addNote} className="rounded-xl px-3 shrink-0" style={{ background: COLORS.sage, color: "#fff" }}>
+                <Icon name="send" size={14} />
               </button>
-              {isOpen && (
-                <div className="px-4 pb-4 pt-0.5" style={{ borderTop: `1px solid ${COLORS.line}` }}>
-                  <ul className="mt-2.5 space-y-1.5">
-                    {sec.rows.map((row, i) => (
-                      <li key={i} className="text-[13.5px] leading-snug flex gap-2" style={{ color: COLORS.inkSoft }}>
-                        <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: kid.color }} />
-                        <span style={{ color: COLORS.ink }}>{row}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
-          );
-        })}
+            {notesLoading ? (
+              <p className="text-[13px]" style={{ color: COLORS.inkSoft }}>Загрузка…</p>
+            ) : notes.length === 0 ? (
+              <p className="text-[13px]" style={{ color: COLORS.inkSoft }}>Пока ничего не записано.</p>
+            ) : (
+              <ul className="space-y-2">
+                {notes.map((n) => (
+                  <li key={n.id} className="text-[13.5px] leading-snug" style={{ color: COLORS.ink, borderTop: `1px solid ${COLORS.line}`, paddingTop: 8 }}>
+                    {n.text}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen: Семья
+// ---------------------------------------------------------------------------
+function randomFamilyCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return `FAM-${s}`;
+}
+
+function FamilyScreen() {
+  const { familyId, loading } = useFamily();
+  const [email, setEmail] = useState("");
+  const [codes, setCodes] = useState([]);
+  const [loadingCodes, setLoadingCodes] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinMsg, setJoinMsg] = useState(null);
+  const [joining, setJoining] = useState(false);
+
+  useEffect(() => { sb.auth.getUser().then(({ data }) => setEmail(data.user?.email || "")); }, []);
+
+  const loadCodes = async (fid) => {
+    setLoadingCodes(true);
+    const { data } = await sb.from("family_invite_codes").select("code, used_by, expires_at").eq("family_id", fid).order("created_at", { ascending: false });
+    setCodes(data || []);
+    setLoadingCodes(false);
+  };
+  useEffect(() => { if (familyId) loadCodes(familyId); }, [familyId]);
+
+  const createCode = async () => {
+    if (!familyId) return;
+    setGenerating(true);
+    const { data: { user } } = await sb.auth.getUser();
+    const code = randomFamilyCode();
+    const { error } = await sb.from("family_invite_codes").insert({
+      family_id: familyId, code, created_by: user?.id, expires_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+    });
+    setGenerating(false);
+    if (!error) loadCodes(familyId);
+  };
+
+  const join = async () => {
+    const code = joinCode.trim();
+    if (!code) return;
+    setJoining(true);
+    const { data: sess } = await sb.auth.getSession();
+    const jwt = sess.session?.access_token;
+    const res = await fetch(SUPABASE_URL + '/functions/v1/join-family', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    setJoining(false);
+    if (!res.ok) return setJoinMsg({ text: data.error || 'Не удалось присоединиться', ok: false });
+    setJoinMsg({ text: `Готово — вы в семье «${data.family_name}». Откройте вкладку «Дети», чтобы увидеть общих детей.`, ok: true });
+    setJoinCode("");
+  };
+
+  if (loading) return <LoadingScreen title="Семья" />;
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Семья" subtitle={email} />
+      <div className="px-5 md:px-8 space-y-4">
+        <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+          <h2 className="text-[14.5px] font-medium mb-1" style={{ color: COLORS.ink }}>Пригласить мужа/жену</h2>
+          <p className="text-[13px] mb-3" style={{ color: COLORS.inkSoft }}>
+            Сгенерируйте код и отправьте партнёру — после входа по коду он увидит тех же детей и то же расписание.
+          </p>
+          <button disabled={generating} onClick={createCode} className="rounded-xl px-4 py-2.5 text-[13.5px] font-medium text-white disabled:opacity-50" style={{ background: COLORS.sage }}>
+            {generating ? "Создаю…" : "Создать код приглашения"}
+          </button>
+          <div className="mt-3">
+            {loadingCodes ? (
+              <p className="text-[13px]" style={{ color: COLORS.inkSoft }}>Загрузка…</p>
+            ) : codes.length === 0 ? (
+              <p className="text-[13px]" style={{ color: COLORS.inkSoft }}>Кодов пока нет.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {codes.map((c) => (
+                  <li key={c.code} className="flex items-center justify-between text-[13px]">
+                    <code style={{ background: "#f1f5f9", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>{c.code}</code>
+                    <span style={{ color: c.used_by ? COLORS.inkSoft : COLORS.sage }}>{c.used_by ? "использован" : "ждёт"}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-4" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+          <h2 className="text-[14.5px] font-medium mb-3" style={{ color: COLORS.ink }}>У меня есть код</h2>
+          <div className="flex gap-2">
+            <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="FAM-XXXXXXXX"
+              className="flex-1 rounded-xl px-3 py-2 text-[14px] outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+            <button disabled={joining || !joinCode.trim()} onClick={join} className="rounded-xl px-4 py-2 text-[13.5px] font-medium text-white disabled:opacity-50 shrink-0" style={{ background: COLORS.sage }}>
+              {joining ? "…" : "Присоединиться"}
+            </button>
+          </div>
+          {joinMsg && <p className="text-[12.5px] mt-2" style={{ color: joinMsg.ok ? COLORS.sage : COLORS.urgent }}>{joinMsg.text}</p>}
+        </div>
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Screen: Спросить
+// ---------------------------------------------------------------------------
 function AskScreen() {
   const [messages, setMessages] = useState([]);
   const [value, setValue] = useState("");
-  const [thinking, setThinking] = useState(false);
 
   const send = (text) => {
     if (!text.trim()) return;
-    setMessages((p) => [...p, { role: "user", text }]);
+    setMessages((p) => [...p, { role: "user", text },
+      { role: "ai", text: "AI-ответы по вашим реальным данным пока не подключены — это следующий шаг разработки." }]);
     setValue("");
-    setThinking(true);
-    setTimeout(() => {
-      const answer = ASK_ANSWERS[text] || "В прототипе отвечаю только на пару примеров вопросов — но в реальном приложении здесь будет ответ, собранный из всех данных по детям.";
-      setMessages((p) => [...p, { role: "ai", text: answer }]);
-      setThinking(false);
-    }, 700);
   };
 
   return (
     <div className="pb-6 flex flex-col" style={{ minHeight: "70vh" }}>
-      <TopBar title="Спросить" subtitle="Всё, что знает система — в одном ответе" />
-      <div className="px-5 flex-1 space-y-3">
-        {messages.length === 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {ASK_SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => send(s)} className="text-[13px] px-3 py-2 rounded-xl text-left" style={{ background: COLORS.sageLight, color: COLORS.sage }}>{s}</button>
-            ))}
-          </div>
-        )}
+      <TopBar title="Спросить" subtitle="Скоро здесь можно будет спросить о детях на обычном языке" />
+      <div className="px-5 md:px-8 flex-1 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
@@ -412,16 +678,8 @@ function AskScreen() {
             </div>
           </div>
         ))}
-        {thinking && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl px-4 py-2.5 flex items-center gap-1.5" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
-              <Icon name="loader" size={14} spin style={{ color: COLORS.sage }} />
-              <span className="text-[13px]" style={{ color: COLORS.inkSoft }}>Собираю ответ…</span>
-            </div>
-          </div>
-        )}
       </div>
-      <div className="px-5 mt-4">
+      <div className="px-5 md:px-8 mt-4">
         <div className="flex items-center gap-2 rounded-2xl px-3 py-2" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
           <input value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(value)}
             placeholder="Спроси о детях…" className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: COLORS.ink }} />
@@ -434,38 +692,134 @@ function AskScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Auth gate
+// ---------------------------------------------------------------------------
+function AuthGate() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const show = (text, ok) => setMsg({ text, ok });
+
+  const signIn = async () => {
+    setBusy(true);
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) return show(error.message, false);
+  };
+
+  const signUp = async () => {
+    setBusy(true);
+    const { error } = await sb.auth.signUp({ email, password });
+    setBusy(false);
+    if (error) return show(error.message, false);
+    show("Готово! Если подтверждение email отключено — сразу жмите «Войти».", true);
+  };
+
+  return (
+    <div className="w-full min-h-screen flex justify-center items-center" style={{ background: "#EDEAE0" }}>
+      <div className="w-full" style={{ maxWidth: 380, fontFamily: "'Inter', sans-serif" }}>
+        <div className="px-5 mb-6 text-center">
+          <h1 className="text-[26px]" style={{ fontFamily: "'Fraunces', serif", color: COLORS.ink, fontWeight: 600 }}>Второй мозг родителя</h1>
+          <p className="text-[13px] mt-1" style={{ color: COLORS.inkSoft }}>Войдите, чтобы продолжить</p>
+        </div>
+        <div className="mx-5 rounded-2xl p-5" style={{ background: COLORS.card, border: `1px solid ${COLORS.line}` }}>
+          <label className="text-[12.5px] block mb-1" style={{ color: COLORS.inkSoft }}>Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+            className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+          <label className="text-[12.5px] block mb-1" style={{ color: COLORS.inkSoft }}>Пароль</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+            className="w-full rounded-xl px-3 py-2 text-[14px] mb-3 outline-none" style={{ border: `1px solid ${COLORS.line}`, color: COLORS.ink }} />
+          <div className="flex gap-2">
+            <button disabled={busy} onClick={signIn} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium text-white" style={{ background: COLORS.sage }}>Войти</button>
+            <button disabled={busy} onClick={signUp} className="flex-1 rounded-xl py-2.5 text-[13.5px] font-medium" style={{ background: COLORS.bg, color: COLORS.sage, border: `1px solid ${COLORS.sage}` }}>Создать аккаунт</button>
+          </div>
+          {msg && <p className="text-[12.5px] mt-3" style={{ color: msg.ok ? COLORS.sage : COLORS.urgent }}>{msg.text}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// App shell — responsive: sidebar nav on desktop (md+), bottom tab bar on mobile
+// ---------------------------------------------------------------------------
 const TABS = [
   { key: "today", label: "Сегодня", icon: "home", screen: TodayScreen },
-  { key: "inbox", label: "Inbox", icon: "inbox", screen: InboxScreen },
+  { key: "inbox", label: "Входящие", icon: "inbox", screen: InboxScreen },
   { key: "calendar", label: "Календарь", icon: "calendar", screen: CalendarScreen },
   { key: "kids", label: "Дети", icon: "users", screen: ChildrenScreen },
+  { key: "family", label: "Семья", icon: "heart", screen: FamilyScreen },
   { key: "ask", label: "Спросить", icon: "sparkles", screen: AskScreen },
 ];
 
-function App() {
+function MainApp() {
   const [tab, setTab] = useState("today");
   const ActiveScreen = TABS.find((t) => t.key === tab).screen;
 
   return (
-    <div className="w-full min-h-screen flex justify-center" style={{ background: "#EDEAE0" }}>
-      <div className="w-full flex flex-col relative" style={{ maxWidth: 430, background: COLORS.bg, fontFamily: "'Inter', sans-serif", minHeight: "100vh" }}>
-        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 84 }}>
-          <ActiveScreen />
+    <div className="w-full min-h-screen md:flex" style={{ background: "#EDEAE0" }}>
+      <div className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:py-6 md:px-3" style={{ borderRight: `1px solid ${COLORS.line}`, background: COLORS.bg }}>
+        <div className="px-3 mb-6 flex items-center gap-2">
+          <span style={{ fontSize: 20 }}>🧠</span>
+          <p style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, color: COLORS.ink }}>Второй мозг</p>
         </div>
-        <div className="fixed bottom-0 flex items-stretch" style={{ width: "100%", maxWidth: 430, background: COLORS.card, borderTop: `1px solid ${COLORS.line}`, paddingBottom: 8 }}>
+        <div className="flex flex-col gap-1">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
-              <button key={t.key} onClick={() => setTab(t.key)} className="flex-1 flex flex-col items-center gap-1 pt-2.5 pb-1">
-                <Icon name={t.icon} size={19} style={{ color: active ? COLORS.sage : COLORS.inkSoft }} />
-                <span className="text-[10.5px]" style={{ color: active ? COLORS.sage : COLORS.inkSoft, fontWeight: active ? 600 : 400 }}>{t.label}</span>
+              <button key={t.key} onClick={() => setTab(t.key)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left"
+                style={{ background: active ? COLORS.sageLight : "transparent", color: active ? COLORS.sage : COLORS.inkSoft }}>
+                <Icon name={t.icon} size={18} />
+                <span className="text-[14px]" style={{ fontWeight: active ? 600 : 400 }}>{t.label}</span>
               </button>
             );
           })}
         </div>
       </div>
+
+      <div className="flex justify-center md:flex-1 md:items-start">
+        <div className="w-full max-w-[430px] md:max-w-[760px] flex flex-col relative" style={{ background: COLORS.bg, fontFamily: "'Inter', sans-serif", minHeight: "100vh" }}>
+          <div className="flex-1 overflow-y-auto pb-[84px] md:pb-6">
+            <ActiveScreen />
+          </div>
+          <div className="md:hidden fixed bottom-0 w-full max-w-[430px] flex items-stretch" style={{ background: COLORS.card, borderTop: `1px solid ${COLORS.line}`, paddingBottom: 8 }}>
+            {TABS.map((t) => {
+              const active = tab === t.key;
+              return (
+                <button key={t.key} onClick={() => setTab(t.key)} className="flex-1 flex flex-col items-center gap-1 pt-2.5 pb-1">
+                  <Icon name={t.icon} size={18} style={{ color: active ? COLORS.sage : COLORS.inkSoft }} />
+                  <span className="text-[10px]" style={{ color: active ? COLORS.sage : COLORS.inkSoft, fontWeight: active ? 600 : 400 }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
+}
+
+function App() {
+  const [session, setSession] = useState(undefined);
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = sb.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (session === undefined) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center" style={{ background: "#EDEAE0" }}>
+        <Icon name="loader" size={22} spin style={{ color: COLORS.sage }} />
+      </div>
+    );
+  }
+  if (!session) return <AuthGate />;
+  return <MainApp />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
