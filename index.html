@@ -120,14 +120,9 @@ function useFamily() {
   const [loading, setLoading] = useState(true);
 
   const reload = async () => {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    let { data: members } = await sb.from("family_members").select("family_id").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
-    let fid = members && members[0] ? members[0].family_id : null;
-    if (!fid) {
-      const { data: fam } = await sb.from("families").insert({ name: "Моя семья" }).select("id").single();
-      if (fam) { await sb.from("family_members").insert({ family_id: fam.id, user_id: user.id, role: "parent" }); fid = fam.id; }
-    }
+    // Server-side: returns the family, creating it (with membership) on first login
+    const { data: fid, error } = await sb.rpc("ensure_my_family");
+    if (error) { console.error("ensure_my_family:", error); setLoading(false); return; }
     setFamilyId(fid);
     if (fid) {
       const { data } = await sb.from("children").select("id, name, birth_date, color").eq("family_id", fid).order("created_at");
@@ -169,7 +164,8 @@ function AddChildForm({ familyId, existingCount, onDone }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
   const save = async () => {
-    if (!name.trim() || !familyId) return;
+    if (!name.trim()) return;
+    if (!familyId) return setErr("Семья ещё не загрузилась. Обновите страницу и попробуйте снова.");
     setSaving(true); setErr(null);
     const color = PALETTE[existingCount % PALETTE.length];
     const { data, error } = await sb.from("children").insert({ family_id: familyId, name: name.trim(), birth_date: birth || null, color }).select("id, name, birth_date, color").single();
